@@ -258,12 +258,27 @@ int readFile() {
     return 1;
 }
 
-int hasExpression(char *string, char *pattern, regmatch_t *pmatch, int len) {
-    regex_t preg;
-    regcomp(&preg, pattern, REG_EXTENDED);
-    int res = regexec(&preg, string, len, pmatch, 0);
-    regfree(&preg);
-    return res == 0;
+int checkParanthesis(const char* exp){
+    char paran[MAX_LINE_LENGTH];
+    int ind = 0;
+    for(int i = 0; i < strlen(exp); i++){
+        if (exp[i] == '(') {
+            paran[++ind] = '(';
+        } else if (exp[i] == ')') {
+            if(paran[ind] == '(')
+                ind --;
+            else
+                return 0;
+        } else if (exp[i] == '[') {
+            paran[++ind] = '[';
+        } else if (exp[i] == ']') {
+            if(paran[ind] == '[')
+                ind --;
+            else
+                return 0;
+        }
+    }
+    return 1;
 }
 
 char* removePostWhiteSpaces(char* str){
@@ -317,13 +332,25 @@ int hasFuncExpression(char *string, char** pmatch, char* funcName){
         res[ind++] = string[j];
     }
     res[ind] = '\0';
-    for(int j = (int) strlen(res) - 1; j >= 0; j--){
-        if(res[j] == ')'){
+    int isParant = 1, isSquareBracket = 0;
+    int lastParant;
+    for(lastParant =0; lastParant <  (int) strlen(res); lastParant++){
+        if (res[lastParant] == '(') {
+            isParant++;
+        } else if (res[lastParant] == ')') {
+            isParant--;
+        } else if (res[lastParant] == '[') {
+            isSquareBracket++;
+        } else if (res[lastParant] == ']') {
+            isSquareBracket--;
+        }
+        if(isParant == 0 && isSquareBracket == 0) {
             found = 1;
-            res[j] = '\0';
             break;
         }
-        else if(res[j] == ' '){
+    }
+    for(int j = lastParant + 1; j <  (int) strlen(res); j++){
+        if(res[j] == ' '){
             continue;
         }
         else {
@@ -331,6 +358,7 @@ int hasFuncExpression(char *string, char** pmatch, char* funcName){
         }
     }
     if(found){
+        res[lastParant] = '\0';
         strcpy(*pmatch, res);
 //        *pmatch = res;
         return 1;
@@ -350,6 +378,9 @@ int hasSqrtExpression(char *string, char** exp){
 }
 int hasPrintExpression(char *string, char** exp){
     return hasFuncExpression(string, exp, "print");
+}
+int hasPrintSepExpression(char *string, char** exp){
+    return hasFuncExpression(string, exp, "printsep");
 }
 
 int hasParanthesisExpression(char *string, char** pmatch) {
@@ -692,12 +723,6 @@ char* removeComments(char *_string) {
 
 
 
-//void processCodeLines() {
-//    int i;
-//    for (i = 0; i < NUMBER_OF_LINES; i++) {
-//        evaluateExpression(LINE_ARRAY[i]);
-//    }
-//}
 
 int isOperator(char c){
 //    if(c == '^'){
@@ -755,7 +780,7 @@ struct StackNode* infixToPostFix(char* exp){
                 numOfParan--;
             }
             else if(exp[i] == '[') {
-                numOfSquare--;
+                numOfSquare++;
             }
             else if(exp[i] == ']'){
                 numOfSquare--;
@@ -783,17 +808,12 @@ struct StackNode* infixToPostFix(char* exp){
             push(&pStack, curr);
         }
         else {
-            char* varName;
+            char* varName = (char *) malloc(sizeof (char ) * MAX_LINE_LENGTH);
             if(hasParanthesisExpression(exp,&varName)) {
                 struct StackNode* s = infixToPostFix(varName);
-                struct StackNode* temp = NULL;
                 while (!isEmpty(s)){
-                    push(&temp, pop(&s));
+                    push(&res, pop(&s));
                 }
-                while (!isEmpty(temp)){
-                    push(&res, pop(&temp));
-                }
-                int r = 0;
             }
             else {
                 push(&res, curr);
@@ -820,7 +840,7 @@ struct variableType evaluateExpression(char* exp) {
     if(hasSqrtExpression(exp, &varName)){
         struct variableType res = evaluateExpression(varName);
         if(res.error){
-            returnErrorVar();
+            return returnErrorVar();
         }
         int dim = res.dim1*res.dim2;
         for(int j = 0; j < dim; j++){
@@ -836,28 +856,28 @@ struct variableType evaluateExpression(char* exp) {
         getChooseParameters2(varName, &exp1, &exp2,&exp3,&exp4);
         struct variableType x1 = evaluateExpression(exp1);
         if(x1.error){
-            returnErrorVar();
+            return returnErrorVar();
         }
         struct variableType x2 = evaluateExpression(exp2);
         if(x2.error){
-            returnErrorVar();
+            return returnErrorVar();
         }
         struct variableType x3 = evaluateExpression(exp3);
         if(x3.error){
-            returnErrorVar();
+            return returnErrorVar();
         }
         struct variableType x4 = evaluateExpression(exp4);
         if(x4.error){
-            returnErrorVar();
+            return returnErrorVar();
         }
         if(x1.dim1 == x1.dim2 == x2.dim1 == x2.dim2 == x3.dim1 == x3.dim2 == x4.dim1 == x4.dim2 != 1){
             struct variableType x = {.name="", 0, 0, 0, 1, -1};
             return x;
         }
-        if(x1.value==0){
+        if(x1.value[0]==0){
             return x2;
         }
-        else if(x1.value > 0){
+        else if(x1.value[0] > 0){
             return x3;
         }
         else {
@@ -867,7 +887,7 @@ struct variableType evaluateExpression(char* exp) {
     else if(hasTransposeExpression(exp, &varName)){
         struct variableType res = evaluateExpression(varName);
         if(res.error){
-            returnErrorVar();
+            return returnErrorVar();
         }
         int dim1 = res.dim1;
         int dim2 = res.dim2;
@@ -903,22 +923,22 @@ struct variableType evaluateExpression(char* exp) {
     else if(hasVectorPointExpression(exp,&varName, &ind1)) {
         struct variableType x = evaluateExpression(ind1);
         if(x.error){
-            returnErrorVar();
+            return returnErrorVar();
         }
         if(x.dim1 != 1 && x.dim2 != 1){
-            returnErrorVar();
+            return returnErrorVar();
         }
         double dimDouble = x.value[0];
         if(dimDouble <= 0 || !isInteger(dimDouble)) {
-            returnErrorVar();
+            return returnErrorVar();
         }
         int dim1 = (int) dimDouble;
         struct variableType s = evaluateExpression(varName);
         if(s.error){
-            returnErrorVar();
+            return returnErrorVar();
         }
         if(dim1 > s.dim1) {
-            returnErrorVar();
+            return returnErrorVar();
         }
         double* ans  = (double *) malloc(sizeof (double ));
         ans[0] = s.value[dim1-1];
@@ -928,33 +948,33 @@ struct variableType evaluateExpression(char* exp) {
     else if(hasMatrixPointExpression(exp, &varName, &ind1, &ind2)) {
         struct variableType x1 = evaluateExpression(ind1);
         if(x1.error){
-            returnErrorVar();
+            return returnErrorVar();
         }
         if(x1.dim1 != 1 && x1.dim2 != 1){
-            returnErrorVar();
+            return returnErrorVar();
         }
         struct variableType x2 = evaluateExpression(ind2);
         if(x2.error){
-            returnErrorVar();
+            return returnErrorVar();
         }
         if(x2.dim1 != 1 && x2.dim2 != 1){
-            returnErrorVar();
+            return returnErrorVar();
         }
-        double dim1Double = atoi((const char *) x1.value);
-        double dim2Double = atoi((const char *) x2.value);
+        double dim1Double = x1.value[0];
+        double dim2Double = x2.value[0];
 
 
         if(dim1Double <= 0 || dim2Double <= 0 || !isInteger(dim1Double) || !isInteger(dim2Double)) {
-            returnErrorVar();
+            return returnErrorVar();
         }
         int dim1 = (int) dim1Double;
         int dim2 = (int) dim2Double;
         struct variableType s = evaluateExpression(varName);
         if(s.error){
-            returnErrorVar();
+            return returnErrorVar();
         }
         if(dim1 > s.dim1 || dim2 > s.dim2) {
-            returnErrorVar();
+            return returnErrorVar();
         }
         double* ans  = (double *) malloc(sizeof (double ));
         ans[0] = s.value[(dim1-1) * s.dim1 + dim2 - 1];
@@ -963,8 +983,8 @@ struct variableType evaluateExpression(char* exp) {
     }
     else if(hasDigitExpression(exp, &ind1)){
         double* arr = (double *) malloc(sizeof (double ) * 1);
-        arr[0] = atoi(ind1);
-        struct variableType s = {"", 1, 1, arr, 0, -1};
+        arr[0] = (double ) atof(ind1);
+        struct variableType s = {"", 1, 1, copyValueArray(arr, 1), 0, -1};
         return s;
     }
     else {
@@ -975,15 +995,15 @@ struct variableType evaluateExpression(char* exp) {
             if(isOperator(*curr)){
                 struct variableType x2 = popVarStack(&evalStack);
                 if(x2.error){
-                    returnErrorVar();
+                    return returnErrorVar();
                 }
                 struct variableType x1 = popVarStack(&evalStack);
                 if(x1.error){
-                    returnErrorVar();
+                    return returnErrorVar();
                 }
                 if(*curr == '+'){
                     if(x1.dim1 != x2.dim1 || x1.dim2 != x2.dim2){
-                        returnErrorVar();
+                        return returnErrorVar();
                     }
                     else {
                         int d = x1.dim1 * x1.dim2;
@@ -997,7 +1017,7 @@ struct variableType evaluateExpression(char* exp) {
                 }
                 else if(*curr == '-'){
                     if(x1.dim1 != x2.dim1 || x1.dim2 != x2.dim2){
-                        returnErrorVar();
+                        return returnErrorVar();
                     }
                     else {
                         int d = x1.dim1 * x1.dim2;
@@ -1005,13 +1025,13 @@ struct variableType evaluateExpression(char* exp) {
                         for (int i = 0; i < d; i++) {
                             arr[i] = x1.value[i] - x2.value[i];
                         }
-                        struct variableType s = {"", x1.dim1, x1.dim2, arr, 0, -1};
+                        struct variableType s = {"", x1.dim1, x1.dim2, copyValueArray(arr, d), 0, -1};
                         pushVarStack(&evalStack, s);
                     }
                 }
                 else if(*curr == '*'){
                     if(x1.dim2 != x2.dim1){
-                        returnErrorVar();
+                        return returnErrorVar();
                     }
                     else {
                         int i,j,k;
@@ -1046,7 +1066,7 @@ struct variableType evaluateExpression(char* exp) {
 
 
 
-int getLineType(char *line) {
+int processCodeLine(char *line) {
     char* varName =  (char *) malloc(MAX_LINE_LENGTH * sizeof (char ));
     char* ind1 =  (char *) malloc(MAX_LINE_LENGTH * sizeof (char ));
     char* ind2 =  (char *) malloc(MAX_LINE_LENGTH * sizeof (char ));
@@ -1059,7 +1079,7 @@ int getLineType(char *line) {
         variableNum++;
     }
     else if (hasVectorDeclarationExpression(line, &varName, &ind1)) {
-        double dim1Double = atoi(ind1);
+        double dim1Double = (double ) atof(ind1);
         if(!isInteger(dim1Double))
             return 0;
         int dim1 = (int) dim1Double;
@@ -1077,12 +1097,12 @@ int getLineType(char *line) {
         variableNum++;
     }
     else if (hasMatrixDeclarationExpression(line, &varName, &ind1, &ind2)) {
-        double dim1Double = atoi(ind1);
+        double dim1Double = (double ) atof(ind1);
         if(!isInteger(dim1Double))
             return 0;
         int dim1 = (int) dim1Double;
 
-        double dim2Double = atoi(ind2);
+        double dim2Double = (double ) atof(ind2);
         if(!isInteger(dim2Double))
             return 0;
         int dim2 = (int) dim2Double;
@@ -1102,22 +1122,24 @@ int getLineType(char *line) {
         if(var.error || var.ind == -1){
             return 0;
         }
-        double arr[256];
+        double arr[var.dim1 * var.dim2];
         int dimVar = 0;
         char* curr;
-        double currVal = 0;
+        struct variableType currVal;
         while( (curr = strsep(&ind1," ")) != NULL ) {
             if(strlen(curr) == 0){
                 continue;
             }
-            currVal = atoi(curr);
-            arr[dimVar] = currVal;
+
+            currVal = evaluateExpression(curr);
+            if(currVal.error || currVal.dim1 != 1 || currVal.dim2 != 1)
+                return 0;
+            arr[dimVar] =  currVal.value[0];
             dimVar++;
         }
         if(var.dim1 * var.dim2 != dimVar)
             return 0;
-        double* resArr = copyValueArray(arr, dimVar);
-        struct variableArrayType finalRes = {var.name, var.dim1, var.dim2, resArr};
+        struct variableArrayType finalRes = {var.name, var.dim1, var.dim2, copyValueArray(arr, dimVar)};
         VARIABLES[var.ind] = finalRes;
         return 1;
     }
@@ -1129,7 +1151,7 @@ int getLineType(char *line) {
         if(var.dim1 != 1 || var.dim2 != 1){
             return 0;
         }
-        double val = atoi(ind1);
+        double val = (double ) atof(ind1);
         double* resArr = (double *) malloc(sizeof (double ) );
         resArr[0] = val;
         struct variableArrayType s = {var.name, var.dim1, var.dim2, copyValueArray(resArr, 1)};
@@ -1152,9 +1174,7 @@ int getLineType(char *line) {
         if(newDim != originalDim)
             return 0;
 
-        double* valDouble = copyValueArray(val.value, originalDim);
-
-        struct variableArrayType s = {var.name, var.dim1, var.dim2, valDouble};
+        struct variableArrayType s = {var.name, var.dim1, var.dim2, copyValueArray(val.value, originalDim)};
         VARIABLES[var.ind] = s;
         return 1;
     }
@@ -1225,10 +1245,18 @@ int getLineType(char *line) {
                 strcpy(PRINT_ARRAY[PRINT_COUNT++], str);
             }
             else {
-                sprintf(str, "%f", var.value[i]);
+                sprintf(str, "%.7f", var.value[i]);
                 strcpy(PRINT_ARRAY[PRINT_COUNT++], str);
             }
         }
+    }
+    else if(hasPrintSepExpression(line, &varName)){
+        for(int i = 0; i < strlen(varName); i++){
+            if(varName[i] != ' ')
+                return 0;
+        }
+        char* printSepChar = "----------";
+        strcpy(PRINT_ARRAY[PRINT_COUNT++], printSepChar);
     }
     else {
         return 0;
@@ -1265,10 +1293,12 @@ int checkEndForLoop(char* line){
 }
 
 int hasOneForExp(char* exp, char **varName, char** start, char** end, char** step){
-
     char* _exp = removePreWhiteSpaces(exp);
     char* _varName = strsep(&_exp, " ");
-    if(_varName == NULL || strlen(_varName) == 0)
+    if(_varName == NULL || strlen(_varName) == 0 || strlen(_varName) == strlen(exp))
+        return 0;
+    char* _temp;
+    if(!hasVariableExpression(_varName, &_temp))
         return 0;
     *varName = _varName;
     int i;
@@ -1304,7 +1334,82 @@ int hasOneForExp(char* exp, char **varName, char** start, char** end, char** ste
     else
         return 0;
     return 1;
+}
+int hasTwoForExp(char* exp, char **varName1, char** start1, char** end1, char** step1,
+                 char **varName2, char** start2, char** end2, char** step2){
+    char* _exp = removePreWhiteSpaces(exp);
+    char* _varName1 = strsep(&_exp, ",");
+    if(_varName1 == NULL || strlen(_varName1) == 0 || strlen(_varName1) == strlen(exp))
+        return 0;
+    *varName1 = _varName1;
+    char* _varName2 = strsep(&_exp, " ");
+    if(_varName2 == NULL || strlen(_varName2) == 0 || strlen(_varName2) == strlen(exp))
+        return 0;
+    *varName2 = _varName2;
+    int i;
+    for(i = 0; i < strlen(_exp); i++){
+        if(_exp[i] == ' ')
+            continue;
+        if(_exp[i] == 'i') {
+            if(i+1 < strlen(_exp) && _exp[i+1] == 'n') {
+                if (i+2 < strlen(_exp) && _exp[i+2] == ' ')
+                    break;
+                else
+                    return 0;
+            }
+            else
+                return 0;
+        }
+    }
+    char* range = subStr(_exp, i+3, (int)strlen(_exp) - i - 3);
+    int hasChar = getFirstIndex(range, ':');
+    if(hasChar == -1)
+        return 0;
+    char* _start1 = strsep(&range, ":");
+    if(_start1 != NULL)
+        *start1 = _start1;
+    else
+        return 0;
+    hasChar = getFirstIndex(range, ':');
+    if(hasChar == -1)
+        return 0;
+    char* _end1 = strsep(&range, ":");
+    if(_end1 != NULL)
+        *end1 = _end1;
+    else
+        return 0;
+    hasChar = getFirstIndex(range, ',');
+    if(hasChar == -1)
+        return 0;
+    char* _step1 = strsep(&range, ",");
+    if(strlen(_step1) != 0)
+        *step1 = _step1;
+    else
+        return 0;
 
+    hasChar = getFirstIndex(range, ':');
+    if(hasChar == -1)
+        return 0;
+    char* _start2 = strsep(&range, ":");
+    if(_start2 != NULL)
+        *start2 = _start2;
+    else
+        return 0;
+    hasChar = getFirstIndex(range, ':');
+    if(hasChar == -1)
+        return 0;
+    char* _end2 = strsep(&range, ":");
+    if(_end2 != NULL)
+        *end2 = _end2;
+    else
+        return 0;
+    char* _step2 = (char *) malloc(sizeof (char ) * strlen(range));
+    strcpy(_step2, range);
+    if(strlen(_step2) != 0)
+        *step2 = _step2;
+    else
+        return 0;
+    return 1;
 }
 
 char* createStepExpression(char* varName, char* step){
@@ -1340,6 +1445,7 @@ char* createAssignmentExpression(char* varName, char* start){
 
 int processForLines(char* exp) {
     char *varName1, * start1, * end1, * step1;
+    char *varName2, * start2, * end2, * step2;
     if(hasOneForExp(exp, &varName1, &start1, &end1, &step1) ){
         struct variableType var = evaluateExpression(varName1);
         if(var.error || var.ind == -1 || var.dim1 != 1 || var.dim2 != 1)
@@ -1356,7 +1462,7 @@ int processForLines(char* exp) {
         double _times = (endVar.value[0] - startVar.value[0]) / stepVar.value[0];
         int times = (int ) _times + 1;
         char* startExp = createAssignmentExpression(varName1, start1);
-        int x = getLineType(startExp);
+        int x = processCodeLine(startExp);
         if(!x)
             return 0;
         for(int i = 0; i <= times; i++){
@@ -1366,21 +1472,96 @@ int processForLines(char* exp) {
             if(var.value[0] > endVar.value[0])
                 break;
             for(int j = 0; j < FOR_COUNT; j++){
-                int res = getLineType(FOR_ARRAY[j]);
+                int res = processCodeLine(FOR_ARRAY[j]);
                 if(!res)
                     return 0;
             }
             char* stepExp = createStepExpression(varName1, step1);
-            x = getLineType(stepExp);
+            x = processCodeLine(stepExp);
             if(!x)
                 return 0;
         }
 
     }
+    else if(hasTwoForExp(exp, &varName1, &start1, &end1, &step1,
+                         &varName2, &start2, &end2, &step2)) {
+        struct variableType var1 = evaluateExpression(varName1);
+        if(var1.error || var1.ind == -1 || var1.dim1 != 1 || var1.dim2 != 1)
+            return 0;
+        struct variableType startVar1 = evaluateExpression(start1);
+        if(startVar1.error || startVar1.dim1 != 1 || startVar1.dim2 != 1)
+            return 0;
+        struct variableType endVar1 = evaluateExpression(end1);
+        if(endVar1.error || endVar1.dim1 != 1 || endVar1.dim2 != 1)
+            return 0;
+        struct variableType stepVar1 = evaluateExpression(step1);
+        if(stepVar1.error || stepVar1.dim1 != 1 || stepVar1.dim2 != 1)
+            return 0;
+
+        struct variableType var2 = evaluateExpression(varName2);
+        if(var2.error || var2.ind == -1 || var2.dim1 != 1 || var2.dim2 != 1)
+            return 0;
+        struct variableType startVar2 = evaluateExpression(start2);
+        if(startVar2.error || startVar2.dim1 != 1 || startVar2.dim2 != 1)
+            return 0;
+        struct variableType endVar2 = evaluateExpression(end2);
+        if(endVar2.error || endVar2.dim1 != 1 || endVar2.dim2 != 1)
+            return 0;
+        struct variableType stepVar2 = evaluateExpression(step2);
+        if(stepVar2.error || stepVar2.dim1 != 1 || stepVar2.dim2 != 1)
+            return 0;
+
+        double _times1 = (endVar1.value[0] - startVar1.value[0]) / stepVar1.value[0];
+        double _times2 = (endVar2.value[0] - startVar2.value[0]) / stepVar2.value[0];
+        int times1 = (int ) _times1 + 1;
+        int times2 = (int ) _times2 + 1;
+
+        char* startExp1 = createAssignmentExpression(varName1, start1);
+        char* startExp2 = createAssignmentExpression(varName2, start2);
+        int x1 = processCodeLine(startExp1);
+        if(!x1)
+            return 0;
+        int x2 = processCodeLine(startExp2);
+        if(!x2)
+            return 0;
+        char* stepExp1 = createStepExpression(varName1, step1);
+        char* stepExp2 = createStepExpression(varName2, step2);
+        for(int i = 0; i <= times1; i++){
+            var1 = evaluateExpression(varName1);
+            if(var1.error || var1.ind == -1 || var1.dim1 != 1 || var1.dim2 != 1)
+                return 0;
+            if(var1.value[0] > endVar1.value[0])
+                break;
+            x2 = processCodeLine(startExp2);
+            if(!x2)
+                return 0;
+            for(int j = 0; j <= times2; j++){
+                var2 = evaluateExpression(varName2);
+                if(var2.error || var2.ind == -1 || var2.dim1 != 1 || var2.dim2 != 1)
+                    return 0;
+                if(var2.value[0] > endVar2.value[0])
+                    break;
+                for(int k = 0; k < FOR_COUNT; k++){
+                    int res = processCodeLine(FOR_ARRAY[k]);
+                    if(!res)
+                        return 0;
+                }
+                x2 = processCodeLine(stepExp2);
+                if(!x2)
+                    return 0;
+            }
+            x1 = processCodeLine(stepExp1);
+            if(!x1)
+                return 0;
+        }
+    }
+    else {
+        return 0;
+    }
     return 1;
 }
 
-void processCodeLines() {
+int processCodeLines() {
     int i, res;
     int lineLength = sizeof (char) * MAX_LINE_LENGTH;
 
@@ -1388,6 +1569,10 @@ void processCodeLines() {
         char * reduced = removeComments(LINE_ARRAY[i]);
         if(reduced == NULL) {
             continue;
+        }
+        if(!checkParanthesis(reduced)){
+            printf("Error in code line %d", i+1);
+            return 0;
         }
         int found = 0;
         char* forExp = (char *) malloc(lineLength);
@@ -1400,7 +1585,7 @@ void processCodeLines() {
                     int r = processForLines(forExp);
                     if(!r) {
                         printf("Error in code line %d", i+1);
-                        return;
+                        return 0;
                     }
                     for(int y = 0; y < FOR_COUNT; y++){
                         strcpy(FOR_ARRAY[y], "\0");
@@ -1414,13 +1599,13 @@ void processCodeLines() {
             }
             continue;
         }
-        res = getLineType(reduced);
+        res = processCodeLine(reduced);
         if(!res) {
             printf("Error in code line %d", i+1);
-            return;
+            return 0;
         }
     }
-
+    return 1;
 }
 
 
@@ -1431,7 +1616,13 @@ int main() {
     if (!hasReadFile) {
         return 1;
     }
-//    struct StackNode* expStack = infixToPostFix("a*(b*c)");
-    processCodeLines();
+
+    int res = processCodeLines();
+    if(res){
+        for(int i = 0; i < PRINT_COUNT; i++)
+            printf("%s\n", PRINT_ARRAY[i]);
+    }
+
+
     return 0;
 }
