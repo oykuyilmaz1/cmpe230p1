@@ -62,6 +62,7 @@ struct variableType {
     double * value;
     int error;
     int ind;
+    char* cName;
 };
 
 struct variableArrayType {
@@ -129,13 +130,22 @@ int NUMBER_OF_LINES = 0;
 struct variableArrayType VARIABLES[40];
 int variableNum = 0;
 
-char PRINT_ARRAY[MAX_NUMBER_OF_LINES][MAX_LINE_LENGTH];
+char PRINT_ARRAY[MAX_NUMBER_OF_LINES][5000];
 int PRINT_COUNT = 0;
 
-char FOR_ARRAY[MAX_NUMBER_OF_LINES][MAX_LINE_LENGTH];
+char FOR_ARRAY[MAX_NUMBER_OF_LINES][5000];
 int FOR_COUNT = 0;
 
 
+char C_CODE_ARRAY[MAX_NUMBER_OF_LINES][5000];
+int  C_CODE_COUNT = 0;
+
+char C_START_ARRAY[7][5000];
+char C_END_ARRAY[1][5000];
+
+int HAS_ERROR = 0;
+
+char C_ERROR_ARRAY[5][MAX_LINE_LENGTH];
 
 double* copyValueArray(double* arr, int len ){
     double *newArr = (double *) malloc(sizeof (double )*len);
@@ -717,7 +727,7 @@ int canBeProcessed(char* exp){
     || hasMatrixPointExpression(exp, NULL, NULL, NULL);
 }
 
-char* removeComments(char *_string) {
+char* handleComments(char *_string) {
     char* string = (char*) malloc(sizeof (char ) * strlen(_string));
     strcpy(string,_string);
     if (*string == '\0') {
@@ -856,6 +866,10 @@ struct variableType evaluateExpression(char* exp) {
         for(int j = 0; j < dim; j++){
             res.value[j] = sqrt(res.value[j]);
         }
+        char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+        sprintf(l, "func_sqrt(%s, %d);\n", res.cName, dim);
+        strcpy(res.cName, l);
+        free(l);
         return res;
     }
     else if(hasChooseExpression(exp, &varName)){
@@ -884,13 +898,23 @@ struct variableType evaluateExpression(char* exp) {
             struct variableType x = {.name="", 0, 0, 0, 1, -1};
             return x;
         }
+        char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+        struct variableType res;
+        sprintf(l, "func_choose(%s,%s,%s,%s)", x1.cName,x2.cName,x3.cName,x4.cName);
+
         if(x1.value[0]==0){
+            strcpy(x2.cName, l);
+            free(l);
             return x2;
         }
         else if(x1.value[0] > 0){
+            strcpy(x3.cName, l);
+            free(l);
             return x3;
         }
         else {
+            strcpy(x4.cName, l);
+            free(l);
             return x4;
         }
     }
@@ -908,7 +932,12 @@ struct variableType evaluateExpression(char* exp) {
                 resArr[i*dim2+j] = res.value[j*dim1+i];
             }
         }
+
         struct variableType s = {"", dim2, dim1, copyValueArray(resArr, dim1*dim2), 0, res.ind};
+        char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+        sprintf(l, "func_tr(%s, %d, %d);\n", res.cName, dim1, dim2);
+        strcpy(s.cName, l);
+        free(l);
         return s;
     }
     else if(hasVariableExpression(exp, &varName)){
@@ -925,6 +954,8 @@ struct variableType evaluateExpression(char* exp) {
         double* arr = copyValueArray(s.value, s.dim1*s.dim2);
         if (found){
             struct variableType res = {.name=s.name, s.dim1, s.dim2, arr, 0,found-1};
+            res.cName = (char*) malloc(sizeof (char )* MAX_LINE_LENGTH);
+            strcpy(res.cName, s.name);
             return res;
         }
         struct variableType x = {.name="", 0, 0, 0, 1,-1};
@@ -953,6 +984,10 @@ struct variableType evaluateExpression(char* exp) {
         double* ans  = (double *) malloc(sizeof (double ));
         ans[0] = s.value[dim1-1];
         struct variableType res = {.name="", 1, 1, ans, 0, s.ind};
+        char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+        sprintf(l, "%s[%d]", s.cName, dim1-1);
+        strcpy(res.cName, l);
+        free(l);
         return res;
     }
     else if(hasMatrixPointExpression(exp, &varName, &ind1, &ind2)) {
@@ -988,13 +1023,23 @@ struct variableType evaluateExpression(char* exp) {
         }
         double* ans  = (double *) malloc(sizeof (double ));
         ans[0] = s.value[(dim1-1) * s.dim1 + dim2 - 1];
-        struct variableType res = {.name="", 1, 1, ans, 0, s.ind};
+        struct variableType res = {.name="", 1, 1, ans, 0, s.ind, ""};
+        char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+        sprintf(l, "%s[%d]", s.cName, (dim1-1) * s.dim1 + dim2 - 1);
+        res.cName = (char*) malloc(sizeof (char ) * MAX_LINE_LENGTH);
+        strcpy(res.cName, l);
+        free(l);
         return res;
     }
     else if(hasDigitExpression(exp, &ind1)){
         double* arr = (double *) malloc(sizeof (double ) * 1);
         arr[0] = (double ) atof(ind1);
-        struct variableType s = {"", 1, 1, copyValueArray(arr, 1), 0, -1};
+        struct variableType s = {"", 1, 1, copyValueArray(arr, 1), 0, -1,""};
+        char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+        sprintf(l, "%f", arr[0]);
+        s.cName = (char*) malloc(sizeof (char ) * MAX_LINE_LENGTH);
+        strcpy(s.cName, l);
+        free(l);
         return s;
     }
     else {
@@ -1023,6 +1068,11 @@ struct variableType evaluateExpression(char* exp) {
                             arr[i] = x1.value[i] + x2.value[i];
                         }
                         struct variableType s = {"", x1.dim1, x1.dim2, arr, 0};
+                        char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                        sprintf(l, "func_add(%s, %s, %d)", x1.cName, x2.cName, d);
+                        s.cName = (char*) malloc(sizeof (char )* MAX_LINE_LENGTH);
+                        strcpy(s.cName, l);
+                        free(l);
                         pushVarStack(&evalStack, s);
                     }
                 }
@@ -1037,6 +1087,11 @@ struct variableType evaluateExpression(char* exp) {
                             arr[i] = x1.value[i] - x2.value[i];
                         }
                         struct variableType s = {"", x1.dim1, x1.dim2, copyValueArray(arr, d), 0, -1};
+                        char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                        sprintf(l, "func_subtract(%s, %s, %d)", x1.cName, x2.cName, d);
+                        s.cName = (char*) malloc(sizeof (char )* MAX_LINE_LENGTH);
+                        strcpy(s.cName, l);
+                        free(l);
                         pushVarStack(&evalStack, s);
                     }
                 }
@@ -1061,6 +1116,10 @@ struct variableType evaluateExpression(char* exp) {
                             }
                         }
                         struct variableType s = {"", d, d2, copyValueArray(_arr, d*d2), 0,-1};
+                        char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                        sprintf(l, "func_multiply(%s, %s, %d, %d, %d)", x1.cName, x2.cName, d, d2, d3);
+                        strcpy(s.cName, l);
+                        free(l);
                         pushVarStack(&evalStack, s);
                     }
                 }
@@ -1077,7 +1136,7 @@ struct variableType evaluateExpression(char* exp) {
     }
 }
 
-int processCodeLine(char *line) {
+int processCodeLine(char *line, int shouldPrint) {
     char* varName =  (char *) malloc(MAX_LINE_LENGTH * sizeof (char ));
     char* ind1 =  (char *) malloc(MAX_LINE_LENGTH * sizeof (char ));
     char* ind2 =  (char *) malloc(MAX_LINE_LENGTH * sizeof (char ));
@@ -1087,6 +1146,12 @@ int processCodeLine(char *line) {
         struct variableArrayType a = {.name = varName, .dim1 =1, .dim2 = 1, .value = y};
         VARIABLES[variableNum] = a;
         variableNum++;
+        if(shouldPrint) {
+            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+            sprintf(l, "double * %s  = (double *) calloc(1, sizeof(double));\n", varName);
+            strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+            free(l);
+        }
     }
     else if (hasVectorDeclarationExpression(line, &varName, &ind1)) {
         double dim1Double = (double ) atof(ind1);
@@ -1101,6 +1166,12 @@ int processCodeLine(char *line) {
         struct variableArrayType b = {.name = varName, .dim1 =dim1, .dim2 = 1, .value =  _y};
         VARIABLES[variableNum] = b;
         variableNum++;
+        if(shouldPrint) {
+            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+            sprintf(l, "double * %s  = (double *) calloc(%d, sizeof(double));\n", varName, dim1);
+            strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+            free(l);
+        }
     }
     else if (hasMatrixDeclarationExpression(line, &varName, &ind1, &ind2)) {
         double dim1Double = (double ) atof(ind1);
@@ -1120,6 +1191,12 @@ int processCodeLine(char *line) {
         struct variableArrayType c = { .name = varName, .dim1 = dim1, .dim2 = dim2, .value = y };
         VARIABLES[variableNum] = c;
         variableNum++;
+        if(shouldPrint) {
+            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+            sprintf(l, "double * %s  = (double *) calloc(%d, sizeof(double));\n", varName, dim1 * dim2);
+            strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+            free(l);
+        }
     }
     else if(hasVectorDefinitionExpression(line, &varName,&ind1)) {
         struct variableType var = evaluateExpression(varName);
@@ -1145,6 +1222,14 @@ int processCodeLine(char *line) {
             return 0;
         struct variableArrayType finalRes = {var.name, var.dim1, var.dim2, copyValueArray(arr, dimVar)};
         VARIABLES[var.ind] = finalRes;
+        if(shouldPrint) {
+            for (int i = 0; i < dimVar; i++) {
+                char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                sprintf(l, "%s[%d]  = %f;\n", varName, i, arr[i]);
+                strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+                free(l);
+            }
+        }
         return 1;
     }
     else if(hasScalarDefinitionExpression(line, &varName, &ind1)){
@@ -1160,6 +1245,12 @@ int processCodeLine(char *line) {
         resArr[0] = val;
         struct variableArrayType s = {var.name, var.dim1, var.dim2, copyValueArray(resArr, 1)};
         VARIABLES[var.ind] = s;
+        if(shouldPrint) {
+            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+            sprintf(l, "%s[0]  = %f;\n", varName, resArr[0]);
+            strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+            free(l);
+        }
         return 1;
     }
     else if(hasAssignmentExpression(line, &varName, &exp)){
@@ -1180,6 +1271,12 @@ int processCodeLine(char *line) {
 
         struct variableArrayType s = {var.name, var.dim1, var.dim2, copyValueArray(val.value, originalDim)};
         VARIABLES[var.ind] = s;
+        if(shouldPrint) {
+            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+            sprintf(l, "%s  = %s;\n", varName, val.cName);
+            strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+            free(l);
+        }
         return 1;
     }
     else if(hasVectorPointAssignmentExpression(line, &varName,&ind1, &exp)) {
@@ -1204,6 +1301,12 @@ int processCodeLine(char *line) {
         valDouble[(int) *ind.value] = val.value[0];
         struct variableArrayType s = {var.name, var.dim1, var.dim2, valDouble};
         VARIABLES[var.ind] = s;
+        if(shouldPrint) {
+            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+            sprintf(l, "%s[%d]  = %s;\n", varName, (int) *ind.value, val.cName);
+            strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+            free(l);
+        }
         return 1;
     }
     else if(hasMatrixPointAssignmentExpression(line, &varName,&ind1,&ind2, &exp)) {
@@ -1235,6 +1338,13 @@ int processCodeLine(char *line) {
         valDouble[changedInd] = val.value[0];
         struct variableArrayType s = {var.name, var.dim1, var.dim2, valDouble};
         VARIABLES[var.ind] = s;
+        if(shouldPrint) {
+            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+            sprintf(l, "%s[%d]  = %s;\n", varName, changedInd, val.cName);
+            strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+            free(l);
+        }
+
         return 1;
     }
     else if(hasPrintExpression(line, &varName)){
@@ -1252,6 +1362,12 @@ int processCodeLine(char *line) {
                 sprintf(str, "%.7f", var.value[i]);
                 strcpy(PRINT_ARRAY[PRINT_COUNT++], str);
             }
+            if(shouldPrint) {
+                char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                sprintf(l, "printf(\"%s[%d]\");\n", var.cName, i);
+                strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+                free(l);
+            }
         }
     }
     else if(hasPrintSepExpression(line, &varName)){
@@ -1259,8 +1375,11 @@ int processCodeLine(char *line) {
             if(varName[i] != ' ')
                 return 0;
         }
-        char* printSepChar = "----------";
-        strcpy(PRINT_ARRAY[PRINT_COUNT++], printSepChar);
+        if(shouldPrint) {
+            char *printSepChar = "----------";
+            strcpy(PRINT_ARRAY[PRINT_COUNT++], printSepChar);
+            strcpy(C_CODE_ARRAY[C_CODE_COUNT++], "printf(\"----------\")");
+        }
     }
     else {
         return 0;
@@ -1463,12 +1582,17 @@ int processForLines(char* exp, int* errorLine) {
         struct variableType stepVar = evaluateExpression(step1);
         if(stepVar.error || stepVar.dim1 != 1 || stepVar.dim2 != 1)
             return 0;
+        char* l = (char *) malloc(sizeof (char ) * MAX_LINE_LENGTH);
+        sprintf(l, "for(%s[0] = %s; %s[0] < %s, %s[0] += %s) {\n", var.cName, startVar.cName, var.cName, endVar.cName, var.cName, stepVar.cName);
+        strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+        free(l);
         double _times = (endVar.value[0] - startVar.value[0]) / stepVar.value[0];
         int times = (int ) _times + 1;
         char* startExp = createAssignmentExpression(varName1, start1);
-        int x = processCodeLine(startExp);
+        int x = processCodeLine(startExp,0);
         if(!x)
             return 0;
+
         for(int i = 0; i <= times; i++){
             var = evaluateExpression(varName1);
             if(var.error || var.ind == -1 || var.dim1 != 1 || var.dim2 != 1)
@@ -1478,18 +1602,18 @@ int processForLines(char* exp, int* errorLine) {
             for(int j = 0; j < FOR_COUNT; j++){
                 if(strlen((FOR_ARRAY[j])) == 0)
                     continue;
-                int res = processCodeLine(FOR_ARRAY[j]);
+                int res = processCodeLine(FOR_ARRAY[j], i==0 && j==0);
                 if(!res) {
                     *errorLine += j + 1;
                     return 0;
                 }
             }
             char* stepExp = createStepExpression(varName1, step1);
-            x = processCodeLine(stepExp);
+            x = processCodeLine(stepExp, 0);
             if(!x)
                 return 0;
         }
-
+        strcpy(C_CODE_ARRAY[C_CODE_COUNT++], "}\n");
     }
     else if(hasTwoForExp(exp, &varName1, &start1, &end1, &step1,
                          &varName2, &start2, &end2, &step2)) {
@@ -1524,12 +1648,20 @@ int processForLines(char* exp, int* errorLine) {
         int times1 = (int ) _times1 + 1;
         int times2 = (int ) _times2 + 1;
 
+        char* l = (char *) malloc(sizeof (char ) * MAX_LINE_LENGTH);
+        sprintf(l, "for(%s[0] = %s; %s[0] < %s; %s[0] += %s) {\n", var1.cName, startVar1.cName, var1.cName, endVar1.cName, var1.cName, stepVar1.cName);
+        strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+        free(l);
+        char* l2 = (char *) malloc(sizeof (char ) * MAX_LINE_LENGTH);
+        sprintf(l2, "for(%s[0] = %s; %s[0] < %s; %s[0] += %s) {\n", var2.cName, startVar2.cName, var2.cName, endVar2.cName, var2.cName, stepVar2.cName);
+        strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l2);
+        free(l2);
         char* startExp1 = createAssignmentExpression(varName1, start1);
         char* startExp2 = createAssignmentExpression(varName2, start2);
-        int x1 = processCodeLine(startExp1);
+        int x1 = processCodeLine(startExp1, 0);
         if(!x1)
             return 0;
-        int x2 = processCodeLine(startExp2);
+        int x2 = processCodeLine(startExp2, 0);
         if(!x2)
             return 0;
         char* stepExp1 = createStepExpression(varName1, step1);
@@ -1540,7 +1672,7 @@ int processForLines(char* exp, int* errorLine) {
                 return 0;
             if(var1.value[0] > endVar1.value[0])
                 break;
-            x2 = processCodeLine(startExp2);
+            x2 = processCodeLine(startExp2, 0);
             if(!x2)
                 return 0;
             for(int j = 0; j <= times2; j++){
@@ -1552,38 +1684,50 @@ int processForLines(char* exp, int* errorLine) {
                 for(int k = 0; k < FOR_COUNT; k++){
                     if(strlen((FOR_ARRAY[k])) == 0)
                         continue;
-                    int res = processCodeLine(FOR_ARRAY[k]);
+                    int res = processCodeLine(FOR_ARRAY[k], i==0 && j== 0);
                     if(!res){
                         *errorLine += k + 1;
                         return 0;
                     }
                 }
-                x2 = processCodeLine(stepExp2);
+                x2 = processCodeLine(stepExp2,0);
                 if(!x2)
                     return 0;
             }
-            x1 = processCodeLine(stepExp1);
+            x1 = processCodeLine(stepExp1,0);
             if(!x1)
                 return 0;
         }
+        strcpy(C_CODE_ARRAY[C_CODE_COUNT++], "}\n");
+        strcpy(C_CODE_ARRAY[C_CODE_COUNT++], "}\n");
+
     }
     else {
         return 0;
     }
     return 1;
 }
+void createErrorProgram(int line) {
+    HAS_ERROR = 1;
+    strcpy(C_ERROR_ARRAY[0], "#include <stdio.h>\n");
+    strcpy(C_ERROR_ARRAY[1], "int main(){\n");
+    char err[] = "printf(\"ERROR: Line      \");\n";
+    strcpy(C_ERROR_ARRAY[2], err);
+    strcpy(C_ERROR_ARRAY[3], "return 0;");
+    strcpy(C_ERROR_ARRAY[4], "}");
 
+}
 int processCodeLines() {
     int i, res;
     int lineLength = sizeof (char) * MAX_LINE_LENGTH;
 
     for (i = 0; i < NUMBER_OF_LINES; i++) {
-        char * reduced = removeComments(LINE_ARRAY[i]);
+        char * reduced = handleComments(LINE_ARRAY[i]);
         if(reduced == NULL) {
             continue;
         }
         if(!checkParanthesis(reduced)){
-            printf("Error in code line %d", i+1);
+            createErrorProgram(i+1);
             return 0;
         }
         int found = 0;
@@ -1592,7 +1736,7 @@ int processCodeLines() {
             int errorLine = i;
             while (i<NUMBER_OF_LINES){
                 i++;
-                char* red = removeComments(LINE_ARRAY[i]);
+                char* red = handleComments(LINE_ARRAY[i]);
                 if(red == NULL) {
                     strcpy(FOR_ARRAY[FOR_COUNT++], "\0");
                     continue;
@@ -1621,7 +1765,7 @@ int processCodeLines() {
             }
             continue;
         }
-        res = processCodeLine(reduced);
+        res = processCodeLine(reduced, 1);
         if(!res) {
             printf("Error in code line %d", i+1);
             return 0;
@@ -1635,16 +1779,142 @@ int processCodeLines() {
 }
 
 
+void prepareCFile() {
+    strcpy(C_START_ARRAY[0], "#include <stdio.h>\n"
+                             "#include <stdlib.h>\n"
+                             "#include <string.h>\n"
+                             "#include <limits.h>\n"
+                             "#include <math.h>\n"
+                             "#include \"t.h\"\n"
+                             "#include <ctype.h>\n");
+    strcpy(C_START_ARRAY[1], "double* func_sqrt(double* param, int dim) {\n"
+                             "        double* res = (double*) calloc(dim, sizeof(double));\n"
+                             "        for(int j = 0; j < dim; j++){\n"
+                             "            res[j] = sqrt(param[j]);\n"
+                             "        }\n"
+                             "        return res;\n"
+                             "}\n");
+    strcpy(C_START_ARRAY[2], "double* func_choose(double* x1, double* x2, double* x3, double* x4) {\n"
+                             "        if(x1[0]==0){\n"
+                             "            return x2;\n"
+                             "        }\n"
+                             "        else if(x1[0] > 0){\n"
+                             "            return x3;\n"
+                             "        }\n"
+                             "        else {\n"
+                             "            return x4;\n"
+                             "        }\n"
+                             "}\n");
+    strcpy(C_START_ARRAY[3], "double* func_tr(double* param, int dim1, int dim2) {\n"
+                             "        int i, j;\n"
+                             "        double* resArr = (double *) calloc(dim1*dim2, sizeof(double));\n"
+                             "        for(i = 0; i < dim1; i++){\n"
+                             "            for(j = 0; j < dim2; j++){\n"
+                             "                resArr[i*dim2+j] = param[j*dim1+i];\n"
+                             "            }\n"
+                             "        }\n"
+                             "        return resArr;\n"
+                             "}\n");
+    strcpy(C_START_ARRAY[4], "double* func_add(double* x1, double* x2, int d) {\n"
+                             "    double* arr = (double *) calloc(d,sizeof (double ));\n"
+                             "    for (int i = 0; i < d; i++) {\n"
+                             "        arr[i] = x1[i] + x2[i];\n"
+                             "    }\n"
+                             "    return arr;\n"
+                             "}\n");
+    strcpy(C_START_ARRAY[5], "double* func_subtract(double* x1, double* x2, int d) {\n"
+                             "    double* arr = (double *) calloc(d,sizeof (double ));\n"
+                             "    for (int i = 0; i < d; i++) {\n"
+                             "        arr[i] = x1[i] - x2[i];\n"
+                             "    }\n"
+                             "    return arr;\n"
+                             "}\n");
+    strcpy(C_START_ARRAY[6], "double* func_multiply(double* x1, double* x2, int d, int d2, int d3) {\n"
+                             "    int i,j,k;\n"
+                             "    double* arr = (double *) calloc(d,sizeof (double ));\n"
+                             "    for(i = 0; i <d; i++){\n"
+                             "          for(j = 0; j < d2; j++){\n"
+                             "               for(k = 0; k < d3; k++){\n"
+                             "                    arr[i*d2+j] += x1[i*d3+k] * x2[k*d2+j];\n"
+                             "               }\n"
+                             "          }\n"
+                             "     }"
+                             "    return arr;\n"
+                             "}\n");
+
+    strcpy(C_END_ARRAY[0], "return 0; \n}\n");
+
+}
+
+void prepareErrorCFile(){
+    strcpy(C_START_ARRAY[0], "#include <stdio.h>\n"
+                             "#include <stdlib.h>\n"
+                             "#include <string.h>\n"
+                             "#include <limits.h>\n"
+                             "#include <math.h>\n"
+                             "#include \"t.h\"\n"
+                             "#include <ctype.h>");
+    strcpy(C_END_ARRAY[0], "return 0; \n}\n");
+
+}
+
+
+int writeToErrorCFile() {
+    FILE *file = fopen("output.c", "w");
+
+    if (!file) {
+        printf("File not found!");
+        return 0;
+    }
+    fprintf(file, "%s", C_START_ARRAY[0]);
+    for(int i = 0; i < 5;i++){
+        fprintf(file, "%s", C_ERROR_ARRAY[i]);
+    }
+
+    fprintf(file, "%s", C_END_ARRAY[0]);
+    return 1;
+}
+
+int writeToCFile() {
+    FILE *file = fopen("output.c", "w");
+
+    if (!file) {
+        printf("File not found!");
+        return 0;
+    }
+    for(int i = 0; i < 7; i++){
+        fprintf(file, "%s", C_START_ARRAY[i]);
+    }
+    for(int i = 0; i < C_CODE_COUNT; i++){
+        fprintf(file, "%s", C_CODE_ARRAY[i]);
+    }
+    fprintf(file, "%s", C_END_ARRAY[0]);
+    fclose(file);
+    return 1;
+}
+
 int main() {
     int hasReadFile = readFile();
     if (!hasReadFile) {
         return 1;
     }
-
+    strcpy(C_CODE_ARRAY[C_CODE_COUNT++], "int main() {\n");
     int res = processCodeLines();
     if(res){
         for(int i = 0; i < PRINT_COUNT; i++)
             printf("%s\n", PRINT_ARRAY[i]);
+        prepareCFile();
+        int hasWrittenToFile = writeToCFile();
+        if (!hasWrittenToFile) {
+            return 1;
+        }
+    }
+    else {
+        prepareErrorCFile();
+        int hasWrittenToFile = writeToErrorCFile();
+        if (!hasWrittenToFile) {
+            return 1;
+        }
     }
 
 
