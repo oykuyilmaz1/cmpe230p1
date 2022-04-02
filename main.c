@@ -55,14 +55,6 @@ char* peek(struct StackNode* root)
     return root->data;
 }
 
-
-
-
-
-
-
-
-
 struct variableType {
     char *name;
     int dim1;
@@ -359,81 +351,13 @@ int hasFuncExpression(char *string, char** pmatch, char* funcName){
     }
     if(found){
         res[lastParant] = '\0';
-        strcpy(*pmatch, res);
-//        *pmatch = res;
+        if(pmatch != NULL)
+            strcpy(*pmatch, res);
         return 1;
     }
     else
         return 0;
 }
-
-int hasChooseExpression(char *string, char** exp){
-    return hasFuncExpression(string, exp, "choose");
-}
-int hasTransposeExpression(char *string, char** exp){
-    return hasFuncExpression(string, exp, "tr");
-}
-int hasSqrtExpression(char *string, char** exp){
-    return hasFuncExpression(string, exp, "sqrt");
-}
-int hasPrintExpression(char *string, char** exp){
-    return hasFuncExpression(string, exp, "print");
-}
-int hasPrintSepExpression(char *string, char** exp){
-    return hasFuncExpression(string, exp, "printsep");
-}
-
-int hasParanthesisExpression(char *string, char** pmatch) {
-    return hasFuncExpression(string, pmatch, "");
-}
-
-int hasVariableExpression(char* string, char** varName) {
-    char* res = removePreWhiteSpaces(string);
-    int hasEnded = 0;
-    for(int i = 0; i < strlen(res); i++){
-        if(res[i] == ' ' && hasEnded)
-            continue;
-        if(res[i] == ' ' && !hasEnded) {
-            hasEnded = 1;
-            continue;
-        }
-        if(hasEnded) {
-            return 0;
-        }
-        if(isalnum(res[i]) || res[i] == '_' || res[i] == '$')
-            continue;
-        return 0;
-    }
-    if(isalpha(res[0]) || res[0] == '_' || res[0] == '$') {
-        char* finalRes = removePostWhiteSpaces(res);
-        *varName = finalRes;
-        return 1;
-    }
-    return 0;
-
-}
-
-int hasDigitExpression(char* string, char** pmatch){
-    char* res = removePreWhiteSpaces(string);
-    int hasEnded = 0;
-    for(int i = 0; i < strlen(res); i++){
-        if(res[i] == ' ' && hasEnded)
-            continue;
-        if(res[i] == ' ' && !hasEnded) {
-            hasEnded = 1;
-            continue;
-        }
-        if(hasEnded) {
-            return 0;
-        }
-        if(isdigit(res[i]) || res[i] == '.')
-            continue;
-        return 0;
-    }
-    *pmatch = removePostWhiteSpaces(res);
-    return 1;
-}
-
 int parseSquareBracket(char* string, int *len1, int *len2) {
     int isParant = 0, isSquareBracket = 0, whichExp = 1;
     int _len1 = 0, _len2 = 0;
@@ -487,6 +411,74 @@ int parseSquareBracket(char* string, int *len1, int *len2) {
     return 1;
 }
 
+int hasChooseExpression(char *string, char** exp){
+    return hasFuncExpression(string, exp, "choose");
+}
+int hasTransposeExpression(char *string, char** exp){
+    return hasFuncExpression(string, exp, "tr");
+}
+int hasSqrtExpression(char *string, char** exp){
+    return hasFuncExpression(string, exp, "sqrt");
+}
+int hasPrintExpression(char *string, char** exp){
+    return hasFuncExpression(string, exp, "print");
+}
+int hasPrintSepExpression(char *string, char** exp){
+    return hasFuncExpression(string, exp, "printsep");
+}
+
+int hasParanthesisExpression(char *string, char** pmatch) {
+    return hasFuncExpression(string, pmatch, "");
+}
+
+int hasVariableExpression(char* string, char** varName) {
+    char* res = removePreWhiteSpaces(string);
+    int hasEnded = 0;
+    for(int i = 0; i < strlen(res); i++){
+        if(res[i] == ' ' && hasEnded)
+            continue;
+        if(res[i] == ' ' && !hasEnded) {
+            hasEnded = 1;
+            continue;
+        }
+        if(hasEnded) {
+            return 0;
+        }
+        if(isalnum(res[i]) || res[i] == '_' || res[i] == '$')
+            continue;
+        return 0;
+    }
+    if(isalpha(res[0]) || res[0] == '_' || res[0] == '$') {
+        char* finalRes = removePostWhiteSpaces(res);
+        if(varName != NULL)
+            *varName = finalRes;
+        return 1;
+    }
+    return 0;
+
+}
+int hasDigitExpression(char* string, char** pmatch){
+    char* res = removePreWhiteSpaces(string);
+    int hasEnded = 0;
+    for(int i = 0; i < strlen(res); i++){
+        if(res[i] == ' ' && hasEnded)
+            continue;
+        if(res[i] == ' ' && !hasEnded) {
+            hasEnded = 1;
+            continue;
+        }
+        if(hasEnded) {
+            return 0;
+        }
+        if(isdigit(res[i]) || res[i] == '.')
+            continue;
+        return 0;
+    }
+    if(pmatch != NULL)
+        *pmatch = removePostWhiteSpaces(res);
+    return 1;
+}
+
 int hasVectorPointExpression(char* string, char** varName, char** index){
     int startInd = getFirstIndex(string, '[');
     if(startInd == -1)
@@ -509,11 +501,12 @@ int hasVectorPointExpression(char* string, char** varName, char** index){
     int x = hasVariableExpression(var, &finalVar);
     if(!x)
         return 0;
-    *varName = finalVar;
-    *index = subStr(string, startInd+1, endInd-startInd-1);
+    if(varName != NULL)
+        *varName = finalVar;
+    if(index != NULL)
+        *index = subStr(string, startInd+1, endInd-startInd-1);
     return 1;
 }
-
 int hasMatrixPointExpression(char* string, char** varName, char** index1, char** index2){
     int startInd = getFirstIndex(string, '[');
     if(startInd == -1)
@@ -536,9 +529,12 @@ int hasMatrixPointExpression(char* string, char** varName, char** index1, char**
     int x = hasVariableExpression(var, &finalVar);
     if(!x)
         return 0;
-    *varName = finalVar;
-    *index1 = subStr(string, startInd+1, len1);
-    *index2 = subStr(string, startInd+len1+2, endInd-startInd-len1-2);
+    if(varName != NULL)
+        *varName = finalVar;
+    if(index1 != NULL)
+        *index1 = subStr(string, startInd+1, len1);
+    if(index2 != NULL)
+        *index2 = subStr(string, startInd+len1+2, endInd-startInd-len1-2);
     return 1;
 }
 
@@ -550,7 +546,6 @@ int hasScalarDeclarationExpression(char* string, char** varName){
     int r = hasVariableExpression(str, varName);
     return r;
 }
-
 int hasVectorDeclarationExpression(char* string, char** varName, char** ind){
     char* str = removePreWhiteSpaces(string);
     char* prefix = strsep(&str, " ");
@@ -566,10 +561,10 @@ int hasVectorDeclarationExpression(char* string, char** varName, char** ind){
     if(!d){
         return 0;
     }
-    *ind = _d;
+    if(ind != NULL)
+        *ind = _d;
     return 1;
 }
-
 int hasMatrixDeclarationExpression(char* string, char** varName, char** ind1, char** ind2){
     char* str = removePreWhiteSpaces(string);
     char* prefix = strsep(&str, " ");
@@ -589,8 +584,10 @@ int hasMatrixDeclarationExpression(char* string, char** varName, char** ind1, ch
     if(!d2){
         return 0;
     }
-    *ind1 = _d1;
-    *ind2 = _d2;
+    if(ind1 != NULL)
+        *ind1 = _d1;
+    if(ind2 != NULL)
+        *ind2 = _d2;
     return 1;
 }
 
@@ -641,12 +638,13 @@ int hasVectorDefinitionExpression(char* string, char** varName, char** ind1) {
     char* returnInd = (char *) malloc(sizeof (char ) * len + 1);
     returnInd = arr;
     returnInd[len] = '\0';
-    *ind1 = returnInd;
-    *varName = _varName;
+    if(ind1 != NULL)
+        *ind1 = returnInd;
+    if(varName != NULL)
+        *varName = _varName;
     return 1;
 
 }
-
 int hasScalarDefinitionExpression(char* string, char** varName, char** ind1){
     char* str = removePreWhiteSpaces(string);
     char* var = strsep(&str, "=");
@@ -659,8 +657,10 @@ int hasScalarDefinitionExpression(char* string, char** varName, char** ind1){
     if(!hasD){
         return 0;
     }
-    *ind1 = arr;
-    *varName = _varName;
+    if(ind1 != NULL)
+        *ind1 = arr;
+    if(varName != NULL)
+        *varName = _varName;
     return 1;
 }
 
@@ -671,8 +671,10 @@ int hasAssignmentExpression(char* string, char** varName, char** exp){
     int v = hasVariableExpression(var, &_varName);
     if(!v)
         return 0;
-    *exp = str;
-    *varName = _varName;
+    if(exp != NULL)
+        *exp = str;
+    if(varName != NULL)
+        *varName = _varName;
     return 1;
 }
 int hasVectorPointAssignmentExpression(char* string, char** varName, char** ind1, char** exp){
@@ -682,9 +684,12 @@ int hasVectorPointAssignmentExpression(char* string, char** varName, char** ind1
     int v = hasVectorPointExpression(var, &_varName, &_ind1);
     if(!v)
         return 0;
-    *exp = str;
-    *ind1 = _ind1;
-    *varName = _varName;
+    if(exp != NULL)
+        *exp = str;
+    if(ind1 != NULL)
+        *ind1 = _ind1;
+    if(varName != NULL)
+        *varName = _varName;
     return 1;
 }
 int hasMatrixPointAssignmentExpression(char* string, char** varName, char** ind1, char** ind2, char** exp){
@@ -694,13 +699,23 @@ int hasMatrixPointAssignmentExpression(char* string, char** varName, char** ind1
     int v = hasMatrixPointExpression(var, &_varName, &_ind1, &_ind2);
     if(!v)
         return 0;
-    *exp = str;
-    *ind1 = _ind1;
-    *ind2 = _ind2;
-    *varName = _varName;
+    if(exp != NULL)
+        *exp = str;
+    if(ind1 != NULL)
+        *ind1 = _ind1;
+    if(ind2 != NULL)
+        *ind1 = _ind2;
+    if(varName != NULL)
+        *varName = _varName;
     return 1;
 }
 
+int canBeProcessed(char* exp){
+    return hasChooseExpression(exp, NULL) || hasTransposeExpression(exp,NULL)
+    || hasSqrtExpression(exp,NULL) || hasVariableExpression(exp,NULL)
+    || hasDigitExpression(exp,NULL) || hasVectorPointExpression(exp, NULL, NULL)
+    || hasMatrixPointExpression(exp, NULL, NULL, NULL);
+}
 
 char* removeComments(char *_string) {
     char* string = (char*) malloc(sizeof (char ) * strlen(_string));
@@ -719,15 +734,8 @@ char* removeComments(char *_string) {
     return NULL;
 }
 
-
-
-
-
-
 int isOperator(char c){
-//    if(c == '^'){
-//        return 3;
-//    }
+
     if(c == '*'){
         return 2;
     }
@@ -736,7 +744,6 @@ int isOperator(char c){
     }
     return 0;
 }
-
 
 int isInteger(double num){
     return num == (int) num;
@@ -788,10 +795,13 @@ struct StackNode* infixToPostFix(char* exp){
             currLen++;
         }
     }
-    char* x = malloc(currLen+1);
-    strncpy(x,&exp[strlen(exp)-currLen],currLen);
-    x[currLen] = '\0';
-    push(&stackNode, x);
+    if(currLen != 0){
+        char* x = malloc(currLen+1);
+        strncpy(x,&exp[strlen(exp)-currLen],currLen);
+        x[currLen] = '\0';
+        push(&stackNode, x);
+    }
+
     struct StackNode* stack =  NULL;
     while(!isEmpty(stackNode)){
         push(&stack, pop(&stackNode));
@@ -992,6 +1002,7 @@ struct variableType evaluateExpression(char* exp) {
         struct StackVarNode* evalStack = NULL;
         while (!isEmpty(expStack)){
             char* curr = pop(&expStack);
+
             if(isOperator(*curr)){
                 struct variableType x2 = popVarStack(&evalStack);
                 if(x2.error){
@@ -1055,6 +1066,9 @@ struct variableType evaluateExpression(char* exp) {
                 }
             }
             else {
+                int isTerm = canBeProcessed(curr);
+                if(!isTerm)
+                    return returnErrorVar();
                 struct variableType s = evaluateExpression(curr);
                 pushVarStack(&evalStack, s);
             }
@@ -1063,17 +1077,13 @@ struct variableType evaluateExpression(char* exp) {
     }
 }
 
-
-
-
 int processCodeLine(char *line) {
     char* varName =  (char *) malloc(MAX_LINE_LENGTH * sizeof (char ));
     char* ind1 =  (char *) malloc(MAX_LINE_LENGTH * sizeof (char ));
     char* ind2 =  (char *) malloc(MAX_LINE_LENGTH * sizeof (char ));
     char* exp =  (char *) malloc(MAX_LINE_LENGTH * sizeof (char ));
     if (hasScalarDeclarationExpression(line, &varName)) {
-        double* y = (double *) malloc(sizeof (double ) *1);
-        y[0] = 0;
+        double* y = (double *) calloc(1, sizeof (double ));
         struct variableArrayType a = {.name = varName, .dim1 =1, .dim2 = 1, .value = y};
         VARIABLES[variableNum] = a;
         variableNum++;
@@ -1086,13 +1096,9 @@ int processCodeLine(char *line) {
         if(dim1 == 0) {
             return 0;
         }
-        double* _y = (double *) malloc(sizeof (double ) * dim1);
-        for(int i = 0; i < dim1; i++){
-            _y[i] = 0;
-        }
-        double *y = copyValueArray(_y, dim1);
+        double* _y = (double *) calloc(dim1,sizeof (double ));
 
-        struct variableArrayType b = {.name = varName, .dim1 =dim1, .dim2 = 1, .value =  y};
+        struct variableArrayType b = {.name = varName, .dim1 =dim1, .dim2 = 1, .value =  _y};
         VARIABLES[variableNum] = b;
         variableNum++;
     }
@@ -1110,9 +1116,7 @@ int processCodeLine(char *line) {
         if(dim1 == 0 || dim2 == 0){
             return 0;
         }
-        double* y = (double *) malloc(sizeof (double ) *dim1*dim2);
-        for(int i = 0; i < dim1*dim2; i++)
-            y[i] = 0;
+        double* y = (double *) calloc(dim1*dim2, sizeof (double ));
         struct variableArrayType c = { .name = varName, .dim1 = dim1, .dim2 = dim2, .value = y };
         VARIABLES[variableNum] = c;
         variableNum++;
@@ -1284,7 +1288,7 @@ int checkEndForLoop(char* line){
     for(int i = 0; i < strlen(line); i++) {
         if(line[i] ==' ')
             continue;
-        else if(line[i] == '}')
+        else if(line[i] == '}' && found == 0)
             found = 1;
         else
             return 0;
@@ -1443,7 +1447,7 @@ char* createAssignmentExpression(char* varName, char* start){
     return res;
 }
 
-int processForLines(char* exp) {
+int processForLines(char* exp, int* errorLine) {
     char *varName1, * start1, * end1, * step1;
     char *varName2, * start2, * end2, * step2;
     if(hasOneForExp(exp, &varName1, &start1, &end1, &step1) ){
@@ -1472,9 +1476,13 @@ int processForLines(char* exp) {
             if(var.value[0] > endVar.value[0])
                 break;
             for(int j = 0; j < FOR_COUNT; j++){
+                if(strlen((FOR_ARRAY[j])) == 0)
+                    continue;
                 int res = processCodeLine(FOR_ARRAY[j]);
-                if(!res)
+                if(!res) {
+                    *errorLine += j + 1;
                     return 0;
+                }
             }
             char* stepExp = createStepExpression(varName1, step1);
             x = processCodeLine(stepExp);
@@ -1542,9 +1550,13 @@ int processForLines(char* exp) {
                 if(var2.value[0] > endVar2.value[0])
                     break;
                 for(int k = 0; k < FOR_COUNT; k++){
+                    if(strlen((FOR_ARRAY[k])) == 0)
+                        continue;
                     int res = processCodeLine(FOR_ARRAY[k]);
-                    if(!res)
+                    if(!res){
+                        *errorLine += k + 1;
                         return 0;
+                    }
                 }
                 x2 = processCodeLine(stepExp2);
                 if(!x2)
@@ -1577,23 +1589,33 @@ int processCodeLines() {
         int found = 0;
         char* forExp = (char *) malloc(lineLength);
         if(getForLoop(reduced, &forExp)){
+            int errorLine = i;
             while (i<NUMBER_OF_LINES){
                 i++;
                 char* red = removeComments(LINE_ARRAY[i]);
+                if(red == NULL) {
+                    strcpy(FOR_ARRAY[FOR_COUNT++], "\0");
+                    continue;
+                }
                 found = checkEndForLoop(red);
                 if(found) {
-                    int r = processForLines(forExp);
+                    int r = processForLines(forExp, &errorLine);
                     if(!r) {
-                        printf("Error in code line %d", i+1);
+                        printf("Error in code line %d", errorLine + 1);
                         return 0;
                     }
                     for(int y = 0; y < FOR_COUNT; y++){
                         strcpy(FOR_ARRAY[y], "\0");
                     }
                     FOR_COUNT = 0;
+                    found = 0;
                     break;
                 }
                 else{
+                    if(!checkParanthesis(red)){
+                        printf("Error in code line %d", i+1);
+                        return 0;
+                    }
                     strcpy(FOR_ARRAY[FOR_COUNT++], red);
                 }
             }
@@ -1605,10 +1627,12 @@ int processCodeLines() {
             return 0;
         }
     }
+    if(FOR_COUNT != 0) {
+        printf("Your for loop has no ending char }");
+        return 0;
+    }
     return 1;
 }
-
-
 
 
 int main() {
