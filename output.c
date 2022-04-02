@@ -12,18 +12,18 @@ double* func_sqrt(double* param, int dim) {
         }
         return res;
 }
-double* func_choose(double* x1, double* x2, double* x3, double* x4) {
-        if(x1[0]==0){
+double func_choose(double x1, double x2, double x3, double x4) {
+        if(x1==0){
             return x2;
         }
-        else if(x1[0] > 0){
+        else if(x1 > 0){
             return x3;
         }
         else {
             return x4;
         }
 }
-double* func_tr(double* param, int dim1, int dim2) {
+double* func_tr_matrix(double* param, int dim1, int dim2) {
         int i, j;
         double* resArr = (double *) calloc(dim1*dim2, sizeof(double));
         for(i = 0; i < dim1; i++){
@@ -33,21 +33,29 @@ double* func_tr(double* param, int dim1, int dim2) {
         }
         return resArr;
 }
-double* func_add(double* x1, double* x2, int d) {
+double func_tr_scalar(double param, int dim1, int dim2) {
+        return param;}
+double* func_add_matrix(double* x1, double* x2, int d) {
     double* arr = (double *) calloc(d,sizeof (double ));
     for (int i = 0; i < d; i++) {
         arr[i] = x1[i] + x2[i];
     }
     return arr;
 }
-double* func_subtract(double* x1, double* x2, int d) {
+double func_add_scalar(double x1, double x2, int d) {
+    return x1 + x2;
+}
+double* func_subtract_matrix(double* x1, double* x2, int d) {
     double* arr = (double *) calloc(d,sizeof (double ));
     for (int i = 0; i < d; i++) {
         arr[i] = x1[i] - x2[i];
     }
     return arr;
 }
-double* func_multiply(double* x1, double* x2, int d, int d2, int d3) {
+double func_subtract_scalar(double x1, double x2, int d) {
+    return x1 - x2;
+}
+double* func_multiply_matrix(double* x1, double* x2, int d, int d2, int d3) {
     int i,j,k;
     double* arr = (double *) calloc(d,sizeof (double ));
     for(i = 0; i <d; i++){
@@ -58,12 +66,15 @@ double* func_multiply(double* x1, double* x2, int d, int d2, int d3) {
           }
      }    return arr;
 }
+double func_multiply_scalar(double x1, double x2, int d, int d2, int d3) {
+    return x1*x2;
+}
 int main() {
 double * A  = (double *) calloc(16, sizeof(double));
-double * count  = (double *) calloc(1, sizeof(double));
-double * incr  = (double *) calloc(1, sizeof(double));
-double * i  = (double *) calloc(1, sizeof(double));
-double * j  = (double *) calloc(1, sizeof(double));
+double count  = 0;
+double incr  = 0;
+double i  = 0;
+double j  = 0;
 A[0]  = 0.000000;
 A[1]  = 1.000000;
 A[2]  = 2.000000;
@@ -80,13 +91,13 @@ A[12]  = 1.000000;
 A[13]  = 2.000000;
 A[14]  = 3.000000;
 A[15]  = 4.000000;
-count[0]  = 0.000000;
-for(i[0] = 1.000000; i[0] < 4.000000; i[0] += 1.000000) {
-for(j[0] = 1.000000; j[0] < 4.000000; j[0] += 1.000000) {
-incr  = func_choose(func_subtract(A[0], 4.000000, 1),1.000000,1.000000,0.000000);
-count  = func_add(count, incr, 1);
+count  = 0.000000;
+for(i = 1.000000; i <= 4.000000; i += 1.000000) {
+for(j = 1.000000; j <= 4.000000; j += 1.000000) {
+incr  = func_choose(func_subtract_scalar(A[(int)((i - 1) * 4 + j - 1)], 4.000000, 1),1.000000,1.000000,0.000000);
+count  = func_add_scalar(count, incr, 1);
 }
 }
-printf("count[0]");
+printf("%.0f", count);
 return 0; 
 }

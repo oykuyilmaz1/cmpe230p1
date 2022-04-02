@@ -140,7 +140,7 @@ int FOR_COUNT = 0;
 char C_CODE_ARRAY[MAX_NUMBER_OF_LINES][5000];
 int  C_CODE_COUNT = 0;
 
-char C_START_ARRAY[7][5000];
+char C_START_ARRAY[11][5000];
 char C_END_ARRAY[1][5000];
 
 int HAS_ERROR = 0;
@@ -934,11 +934,20 @@ struct variableType evaluateExpression(char* exp) {
         }
 
         struct variableType s = {"", dim2, dim1, copyValueArray(resArr, dim1*dim2), 0, res.ind};
-        char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
-        sprintf(l, "func_tr(%s, %d, %d);\n", res.cName, dim1, dim2);
-        strcpy(s.cName, l);
-        free(l);
-        return s;
+        if(dim1 == dim2 && dim1 == 1){
+            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+            sprintf(l, "func_tr_scalar(%s, %d, %d);\n", res.cName, dim1, dim2);
+            strcpy(s.cName, l);
+            free(l);
+            return s;
+        }
+        else {
+            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+            sprintf(l, "func_tr_matrix(%s, %d, %d);\n", res.cName, dim1, dim2);
+            strcpy(s.cName, l);
+            free(l);
+            return s;
+        }
     }
     else if(hasVariableExpression(exp, &varName)){
         int i;
@@ -1023,10 +1032,12 @@ struct variableType evaluateExpression(char* exp) {
         }
         double* ans  = (double *) malloc(sizeof (double ));
         ans[0] = s.value[(dim1-1) * s.dim1 + dim2 - 1];
-        struct variableType res = {.name="", 1, 1, ans, 0, s.ind, ""};
+        struct variableType res = {.name=s.name, 1, 1, ans, 0, s.ind, ""};
         char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
-        sprintf(l, "%s[%d]", s.cName, (dim1-1) * s.dim1 + dim2 - 1);
-        res.cName = (char*) malloc(sizeof (char ) * MAX_LINE_LENGTH);
+        char *l2 = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+        sprintf(l2, "(int)((%s - 1) * %d + %s - 1)",  x1.cName, s.dim1 , x2.cName);
+        sprintf(l, "%s[%s]", s.cName, l2);
+        res.cName = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
         strcpy(res.cName, l);
         free(l);
         return res;
@@ -1068,11 +1079,20 @@ struct variableType evaluateExpression(char* exp) {
                             arr[i] = x1.value[i] + x2.value[i];
                         }
                         struct variableType s = {"", x1.dim1, x1.dim2, arr, 0};
-                        char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
-                        sprintf(l, "func_add(%s, %s, %d)", x1.cName, x2.cName, d);
-                        s.cName = (char*) malloc(sizeof (char )* MAX_LINE_LENGTH);
-                        strcpy(s.cName, l);
-                        free(l);
+                        if(d == 1){
+                            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                            sprintf(l, "func_add_scalar(%s, %s, %d)", x1.cName, x2.cName, d);
+                            s.cName = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                            strcpy(s.cName, l);
+                            free(l);
+                        }
+                        else {
+                            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                            sprintf(l, "func_add_matrix(%s, %s, %d)", x1.cName, x2.cName, d);
+                            s.cName = (char*) malloc(sizeof (char )* MAX_LINE_LENGTH);
+                            strcpy(s.cName, l);
+                            free(l);
+                        }
                         pushVarStack(&evalStack, s);
                     }
                 }
@@ -1087,11 +1107,20 @@ struct variableType evaluateExpression(char* exp) {
                             arr[i] = x1.value[i] - x2.value[i];
                         }
                         struct variableType s = {"", x1.dim1, x1.dim2, copyValueArray(arr, d), 0, -1};
-                        char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
-                        sprintf(l, "func_subtract(%s, %s, %d)", x1.cName, x2.cName, d);
-                        s.cName = (char*) malloc(sizeof (char )* MAX_LINE_LENGTH);
-                        strcpy(s.cName, l);
-                        free(l);
+                        if(d > 1) {
+                            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                            sprintf(l, "func_subtract_matrix(%s, %s, %d)", x1.cName, x2.cName, d);
+                            s.cName = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                            strcpy(s.cName, l);
+                            free(l);
+                        }
+                        else {
+                            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                            sprintf(l, "func_subtract_scalar(%s, %s, %d)", x1.cName, x2.cName, d);
+                            s.cName = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                            strcpy(s.cName, l);
+                            free(l);
+                        }
                         pushVarStack(&evalStack, s);
                     }
                 }
@@ -1116,10 +1145,19 @@ struct variableType evaluateExpression(char* exp) {
                             }
                         }
                         struct variableType s = {"", d, d2, copyValueArray(_arr, d*d2), 0,-1};
-                        char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
-                        sprintf(l, "func_multiply(%s, %s, %d, %d, %d)", x1.cName, x2.cName, d, d2, d3);
-                        strcpy(s.cName, l);
-                        free(l);
+                        if(d == 1 && d2 == 1 && d3 == 1) {
+                            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                            sprintf(l, "func_multiply_scalar(%s, %s, %d, %d, %d)", x1.cName, x2.cName, d, d2, d3);
+                            strcpy(s.cName, l);
+                            free(l);
+                        }
+                        else {
+
+                            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                            sprintf(l, "func_multiply_matrix(%s, %s, %d, %d, %d)", x1.cName, x2.cName, d, d2, d3);
+                            strcpy(s.cName, l);
+                            free(l);
+                        }
                         pushVarStack(&evalStack, s);
                     }
                 }
@@ -1148,7 +1186,7 @@ int processCodeLine(char *line, int shouldPrint) {
         variableNum++;
         if(shouldPrint) {
             char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
-            sprintf(l, "double * %s  = (double *) calloc(1, sizeof(double));\n", varName);
+            sprintf(l, "double %s  = 0;\n", varName);
             strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
             free(l);
         }
@@ -1247,7 +1285,7 @@ int processCodeLine(char *line, int shouldPrint) {
         VARIABLES[var.ind] = s;
         if(shouldPrint) {
             char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
-            sprintf(l, "%s[0]  = %f;\n", varName, resArr[0]);
+            sprintf(l, "%s  = %f;\n", varName, resArr[0]);
             strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
             free(l);
         }
@@ -1363,10 +1401,22 @@ int processCodeLine(char *line, int shouldPrint) {
                 strcpy(PRINT_ARRAY[PRINT_COUNT++], str);
             }
             if(shouldPrint) {
-                char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
-                sprintf(l, "printf(\"%s[%d]\");\n", var.cName, i);
-                strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
-                free(l);
+                if(var.dim1 == var.dim2 && var.dim1 == 1) {
+                    char *l2 = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                    char* l = "printf(\"%.0f\", ";
+                    strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+                    sprintf(l2, "%s);\n", var.cName);
+                    strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l2);
+                    free(l2);
+                }
+                else {
+                    char *l2 = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                    char* l = "printf(\"%.7f\", ";
+                    strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+                    sprintf(l2, "%s[%d]);\n", var.cName, i);
+                    strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l2);
+                    free(l2);
+                }
             }
         }
     }
@@ -1583,7 +1633,7 @@ int processForLines(char* exp, int* errorLine) {
         if(stepVar.error || stepVar.dim1 != 1 || stepVar.dim2 != 1)
             return 0;
         char* l = (char *) malloc(sizeof (char ) * MAX_LINE_LENGTH);
-        sprintf(l, "for(%s[0] = %s; %s[0] < %s, %s[0] += %s) {\n", var.cName, startVar.cName, var.cName, endVar.cName, var.cName, stepVar.cName);
+        sprintf(l, "for(%s = %s; %s <= %s; %s += %s) {\n", var.cName, startVar.cName, var.cName, endVar.cName, var.cName, stepVar.cName);
         strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
         free(l);
         double _times = (endVar.value[0] - startVar.value[0]) / stepVar.value[0];
@@ -1649,11 +1699,11 @@ int processForLines(char* exp, int* errorLine) {
         int times2 = (int ) _times2 + 1;
 
         char* l = (char *) malloc(sizeof (char ) * MAX_LINE_LENGTH);
-        sprintf(l, "for(%s[0] = %s; %s[0] < %s; %s[0] += %s) {\n", var1.cName, startVar1.cName, var1.cName, endVar1.cName, var1.cName, stepVar1.cName);
+        sprintf(l, "for(%s = %s; %s <= %s; %s += %s) {\n", var1.cName, startVar1.cName, var1.cName, endVar1.cName, var1.cName, stepVar1.cName);
         strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
         free(l);
         char* l2 = (char *) malloc(sizeof (char ) * MAX_LINE_LENGTH);
-        sprintf(l2, "for(%s[0] = %s; %s[0] < %s; %s[0] += %s) {\n", var2.cName, startVar2.cName, var2.cName, endVar2.cName, var2.cName, stepVar2.cName);
+        sprintf(l2, "for(%s = %s; %s <= %s; %s += %s) {\n", var2.cName, startVar2.cName, var2.cName, endVar2.cName, var2.cName, stepVar2.cName);
         strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l2);
         free(l2);
         char* startExp1 = createAssignmentExpression(varName1, start1);
@@ -1794,18 +1844,18 @@ void prepareCFile() {
                              "        }\n"
                              "        return res;\n"
                              "}\n");
-    strcpy(C_START_ARRAY[2], "double* func_choose(double* x1, double* x2, double* x3, double* x4) {\n"
-                             "        if(x1[0]==0){\n"
+    strcpy(C_START_ARRAY[2], "double func_choose(double x1, double x2, double x3, double x4) {\n"
+                             "        if(x1==0){\n"
                              "            return x2;\n"
                              "        }\n"
-                             "        else if(x1[0] > 0){\n"
+                             "        else if(x1 > 0){\n"
                              "            return x3;\n"
                              "        }\n"
                              "        else {\n"
                              "            return x4;\n"
                              "        }\n"
                              "}\n");
-    strcpy(C_START_ARRAY[3], "double* func_tr(double* param, int dim1, int dim2) {\n"
+    strcpy(C_START_ARRAY[3], "double* func_tr_matrix(double* param, int dim1, int dim2) {\n"
                              "        int i, j;\n"
                              "        double* resArr = (double *) calloc(dim1*dim2, sizeof(double));\n"
                              "        for(i = 0; i < dim1; i++){\n"
@@ -1815,21 +1865,30 @@ void prepareCFile() {
                              "        }\n"
                              "        return resArr;\n"
                              "}\n");
-    strcpy(C_START_ARRAY[4], "double* func_add(double* x1, double* x2, int d) {\n"
+    strcpy(C_START_ARRAY[4], "double func_tr_scalar(double param, int dim1, int dim2) {\n"
+                             "        return param;"
+                             "}\n");
+    strcpy(C_START_ARRAY[5], "double* func_add_matrix(double* x1, double* x2, int d) {\n"
                              "    double* arr = (double *) calloc(d,sizeof (double ));\n"
                              "    for (int i = 0; i < d; i++) {\n"
                              "        arr[i] = x1[i] + x2[i];\n"
                              "    }\n"
                              "    return arr;\n"
                              "}\n");
-    strcpy(C_START_ARRAY[5], "double* func_subtract(double* x1, double* x2, int d) {\n"
+    strcpy(C_START_ARRAY[6], "double func_add_scalar(double x1, double x2, int d) {\n"
+                             "    return x1 + x2;\n"
+                             "}\n");
+    strcpy(C_START_ARRAY[7], "double* func_subtract_matrix(double* x1, double* x2, int d) {\n"
                              "    double* arr = (double *) calloc(d,sizeof (double ));\n"
                              "    for (int i = 0; i < d; i++) {\n"
                              "        arr[i] = x1[i] - x2[i];\n"
                              "    }\n"
                              "    return arr;\n"
                              "}\n");
-    strcpy(C_START_ARRAY[6], "double* func_multiply(double* x1, double* x2, int d, int d2, int d3) {\n"
+    strcpy(C_START_ARRAY[8], "double func_subtract_scalar(double x1, double x2, int d) {\n"
+                             "    return x1 - x2;\n"
+                             "}\n");
+    strcpy(C_START_ARRAY[9], "double* func_multiply_matrix(double* x1, double* x2, int d, int d2, int d3) {\n"
                              "    int i,j,k;\n"
                              "    double* arr = (double *) calloc(d,sizeof (double ));\n"
                              "    for(i = 0; i <d; i++){\n"
@@ -1841,7 +1900,9 @@ void prepareCFile() {
                              "     }"
                              "    return arr;\n"
                              "}\n");
-
+    strcpy(C_START_ARRAY[10], "double func_multiply_scalar(double x1, double x2, int d, int d2, int d3) {\n"
+                             "    return x1*x2;\n"
+                             "}\n");
     strcpy(C_END_ARRAY[0], "return 0; \n}\n");
 
 }
@@ -1882,7 +1943,7 @@ int writeToCFile() {
         printf("File not found!");
         return 0;
     }
-    for(int i = 0; i < 7; i++){
+    for(int i = 0; i < 11; i++){
         fprintf(file, "%s", C_START_ARRAY[i]);
     }
     for(int i = 0; i < C_CODE_COUNT; i++){
