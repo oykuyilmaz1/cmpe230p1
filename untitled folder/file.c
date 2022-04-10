@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
 #include <math.h>
-#include "t.h"
 #include <ctype.h>
 double* func_sqrt(double* param, int dim) {
         double* res = (double*) calloc(dim, sizeof(double));

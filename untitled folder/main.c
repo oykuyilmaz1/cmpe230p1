@@ -2,13 +2,15 @@
 #include <stdlib.h>
 #include <regex.h>
 #include <string.h>
-#include <limits.h>
 #include <math.h>
-#include "t.h"
 #include <ctype.h>
 
+#define MAX_LINE_LENGTH 256
+#define MAX_NUMBER_OF_LINES 400
 
-
+/**
+ * Stack to hold  th expressions
+ * */
 struct StackNode {
     char* data;
     struct StackNode* next;
@@ -55,6 +57,9 @@ char* peek(struct StackNode* root)
     return root->data;
 }
 
+/**
+ * Struct to show the calculated variables
+ * */
 struct variableType {
     char *name;
     int dim1;
@@ -64,7 +69,9 @@ struct variableType {
     int ind;
     char* cName;
 };
-
+/**
+ * Struct to show the calculated real variables from mat file
+ * */
 struct variableArrayType {
     char *name;
     int dim1;
@@ -72,7 +79,9 @@ struct variableArrayType {
     double * value;
 };
 
-
+/**
+ * For Infix conversion
+ * */
 
 struct StackVarNode {
     struct variableType data;
@@ -123,30 +132,49 @@ struct variableType peekVarStack(struct StackVarNode* root)
     return root->data;
 }
 
-
+/**
+ * These are for debug
+ * */
 char LINE_ARRAY[MAX_NUMBER_OF_LINES][MAX_LINE_LENGTH];
 int NUMBER_OF_LINES = 0;
 
+/**
+ * Variable array
+ * */
 struct variableArrayType VARIABLES[40];
 int variableNum = 0;
-
+/**
+ * These are for debug
+ * */
 char PRINT_ARRAY[MAX_NUMBER_OF_LINES][5000];
 int PRINT_COUNT = 0;
 
+/**
+ * Array to keep the for oop statements
+ * */
 char FOR_ARRAY[MAX_NUMBER_OF_LINES][5000];
 int FOR_COUNT = 0;
 
-
+/**
+ * Array to keep the code lines for the c file
+ * */
 char C_CODE_ARRAY[MAX_NUMBER_OF_LINES][5000];
 int  C_CODE_COUNT = 0;
-
-char C_START_ARRAY[11][5000];
+/**
+ * Array to keep the code lines for the c file
+ * */
+char C_START_ARRAY[20][5000];
+int C_START_COUNT = 0;
 char C_END_ARRAY[1][5000];
 
 int HAS_ERROR = 0;
-
+/**
+ * Array to keep the code lines for the error c file
+ * */
 char C_ERROR_ARRAY[5][MAX_LINE_LENGTH];
-
+/**
+ * Copies the values of a double pointer
+ * */
 double* copyValueArray(double* arr, int len ){
     double *newArr = (double *) malloc(sizeof (double )*len);
     for(int i = 0; i < len; i++){
@@ -154,14 +182,21 @@ double* copyValueArray(double* arr, int len ){
     }
     return newArr;
 }
-
+/**
+ * Returns the first index of the char for the given index
+ *
+ * */
 int getFirstIndex(char *string, char c) {
-    char *e = strchr(string, c);
-    if (e == NULL) {
+    char *ind = strchr(string, c);
+    if (ind == NULL) {
         return -1;
     }
-    return (int) (e - string);
+    return (int) (ind - string);
 }
+/**
+ * Returns the last index of the char for the given index
+ *
+ * */
 int getLastIndex(char *string, char c) {
     char *e = strrchr(string, c);
     if (e == NULL) {
@@ -169,14 +204,19 @@ int getLastIndex(char *string, char c) {
     }
     return (int) (e - string);
 }
-
+/**
+ * Returns the substring
+ *
+ * */
 char* subStr(char* string,int start, int len){
     char* r = (char*) malloc(sizeof(char) * (len+1));
     strncpy(r,&string[start],len);
     r[len] = '\0';
     return r;
 }
-
+/**
+ * For extracting choose parameters
+ * */
 void getChooseParametersLengths(char* line,int* exp1, int* exp2, int* exp3, int* exp4){
     int isParant = 0, isSquareBracket = 0, whichExp = 1;
     int len1 = 0, len2 = 0, len3 = 0, len4 = 0;
@@ -231,7 +271,9 @@ void getChooseParametersLengths(char* line,int* exp1, int* exp2, int* exp3, int*
     * exp4 = curLen;
 }
 
-
+/**
+ * For extracting choose parameters
+ * */
 void getChooseParameters2(char* line ,char** exp1, char** exp2, char** exp3, char ** exp4){
     int len1, len2,len3, len4;
     getChooseParametersLengths(line, &len1,&len2,&len3,&len4);
@@ -241,9 +283,11 @@ void getChooseParameters2(char* line ,char** exp1, char** exp2, char** exp3, cha
     *exp4 = subStr(line,len1+len2+len3+3,len4);
 }
 
-
-int readFile() {
-    FILE *file = fopen("t.txt", "r");
+/**
+ * reads the mat file
+ * */
+int readFile(char* filename) {
+    FILE *file = fopen(filename, "r");
 
     if (!file) {
         printf("File not found!");
@@ -259,7 +303,9 @@ int readFile() {
     fclose(file);
     return 1;
 }
-
+/**
+ * Checks the correctness of the paranthesis
+ * */
 int checkParanthesis(const char* exp){
     char paran[MAX_LINE_LENGTH];
     int ind = 0;
@@ -282,11 +328,15 @@ int checkParanthesis(const char* exp){
     }
     return 1;
 }
-
+/**
+ * Removes the whitespaces after the line
+ * */
 char* removePostWhiteSpaces(char* str){
     return strsep(&str," ");
 }
-
+/**
+ * Removes the whitespaces before the line
+ * */
 char* removePreWhiteSpaces(char* string){
     int isStarted = 0;
     int i;
@@ -304,7 +354,10 @@ char* removePreWhiteSpaces(char* string){
     res[ind] = '\0';
     return res;
 }
-
+/**
+ * Checks if the expression has a func expression,
+ * returns the parameters of the function
+ * */
 int hasFuncExpression(char *string, char** pmatch, char* funcName){
     char var[256];
     int ind = 0;
@@ -420,27 +473,52 @@ int parseSquareBracket(char* string, int *len1, int *len2) {
     *len2 = _len2;
     return 1;
 }
-
+/**
+ * Checks if the expression has a choose expression,
+ * returns the parameters of the function
+ * */
 int hasChooseExpression(char *string, char** exp){
     return hasFuncExpression(string, exp, "choose");
 }
+/**
+ * Checks if the expression has a transpose expression,
+ * returns the parameters of the function
+ * */
 int hasTransposeExpression(char *string, char** exp){
     return hasFuncExpression(string, exp, "tr");
 }
+/**
+ * Checks if the expression has a sqrt expression,
+ * returns the parameters of the function
+ * */
 int hasSqrtExpression(char *string, char** exp){
     return hasFuncExpression(string, exp, "sqrt");
 }
+/**
+ * Checks if the expression has a print expression,
+ * returns the parameters of the function
+ * */
 int hasPrintExpression(char *string, char** exp){
     return hasFuncExpression(string, exp, "print");
 }
+/**
+ * Checks if the expression has a print sep expression,
+ * returns the parameters of the function
+ * */
 int hasPrintSepExpression(char *string, char** exp){
     return hasFuncExpression(string, exp, "printsep");
 }
-
+/**
+ * Checks if the expression has a paranthesis expression,
+ * returns the parameters of the function
+ * */
 int hasParanthesisExpression(char *string, char** pmatch) {
     return hasFuncExpression(string, pmatch, "");
 }
-
+/**
+ * Checks if the expression has a variable expression,
+ * returns thename of the variable
+ * */
 int hasVariableExpression(char* string, char** varName) {
     char* res = removePreWhiteSpaces(string);
     int hasEnded = 0;
@@ -467,6 +545,10 @@ int hasVariableExpression(char* string, char** varName) {
     return 0;
 
 }
+/**
+ * Checks if the expression has a digit expression,
+ * returns the number
+ * */
 int hasDigitExpression(char* string, char** pmatch){
     char* res = removePreWhiteSpaces(string);
     int hasEnded = 0;
@@ -488,7 +570,10 @@ int hasDigitExpression(char* string, char** pmatch){
         *pmatch = removePostWhiteSpaces(res);
     return 1;
 }
-
+/**
+ * Checks if the expression has a vector point expression,
+ * returns the name of the variable, index
+ * */
 int hasVectorPointExpression(char* string, char** varName, char** index){
     int startInd = getFirstIndex(string, '[');
     if(startInd == -1)
@@ -517,6 +602,10 @@ int hasVectorPointExpression(char* string, char** varName, char** index){
         *index = subStr(string, startInd+1, endInd-startInd-1);
     return 1;
 }
+/**
+ * Checks if the expression has a vector point expression,
+ * returns the name of the variable, indicies
+ * */
 int hasMatrixPointExpression(char* string, char** varName, char** index1, char** index2){
     int startInd = getFirstIndex(string, '[');
     if(startInd == -1)
@@ -547,7 +636,10 @@ int hasMatrixPointExpression(char* string, char** varName, char** index1, char**
         *index2 = subStr(string, startInd+len1+2, endInd-startInd-len1-2);
     return 1;
 }
-
+/**
+ * Checks if the expression has a scalar expression,
+ * returns the name of the variable
+ * */
 int hasScalarDeclarationExpression(char* string, char** varName){
     char* str = removePreWhiteSpaces(string);
     char* prefix = strsep(&str, " ");
@@ -556,6 +648,10 @@ int hasScalarDeclarationExpression(char* string, char** varName){
     int r = hasVariableExpression(str, varName);
     return r;
 }
+/**
+ * Checks if the expression has a vector expression,
+ * returns the name of the variable, index
+ * */
 int hasVectorDeclarationExpression(char* string, char** varName, char** ind){
     char* str = removePreWhiteSpaces(string);
     char* prefix = strsep(&str, " ");
@@ -575,6 +671,10 @@ int hasVectorDeclarationExpression(char* string, char** varName, char** ind){
         *ind = _d;
     return 1;
 }
+/**
+ * Checks if the expression has a matrix expression,
+ * returns the name of the variable, indicies
+ * */
 int hasMatrixDeclarationExpression(char* string, char** varName, char** ind1, char** ind2){
     char* str = removePreWhiteSpaces(string);
     char* prefix = strsep(&str, " ");
@@ -600,7 +700,10 @@ int hasMatrixDeclarationExpression(char* string, char** varName, char** ind1, ch
         *ind2 = _d2;
     return 1;
 }
-
+/**
+ * Checks if the expression has a vector expression,
+ * returns the content of the variable
+ * */
 int hasVectorDefinitionExpression(char* string, char** varName, char** ind1) {
     char* str = removePreWhiteSpaces(string);
     char* var = strsep(&str, "=");
@@ -655,6 +758,10 @@ int hasVectorDefinitionExpression(char* string, char** varName, char** ind1) {
     return 1;
 
 }
+/**
+ * Checks if the expression has a scalar expression,
+ * returns the content
+ * */
 int hasScalarDefinitionExpression(char* string, char** varName, char** ind1){
     char* str = removePreWhiteSpaces(string);
     char* var = strsep(&str, "=");
@@ -673,6 +780,10 @@ int hasScalarDefinitionExpression(char* string, char** varName, char** ind1){
         *varName = _varName;
     return 1;
 }
+/**
+ * Checks if the expression has an assignment expression,
+ * returns the name of the variable, expression
+ * */
 
 int hasAssignmentExpression(char* string, char** varName, char** exp){
     char* str = removePreWhiteSpaces(string);
@@ -687,6 +798,10 @@ int hasAssignmentExpression(char* string, char** varName, char** exp){
         *varName = _varName;
     return 1;
 }
+/**
+ * Checks if the expression has a vector assignment expression,
+ * returns the name of the variable, index, expression
+ * */
 int hasVectorPointAssignmentExpression(char* string, char** varName, char** ind1, char** exp){
     char* str = removePreWhiteSpaces(string);
     char* var = strsep(&str, "=");
@@ -702,6 +817,10 @@ int hasVectorPointAssignmentExpression(char* string, char** varName, char** ind1
         *varName = _varName;
     return 1;
 }
+/**
+ * Checks if the expression has a matrix assignment expression,
+ * returns the name of the variable, indicies, expression
+ * */
 int hasMatrixPointAssignmentExpression(char* string, char** varName, char** ind1, char** ind2, char** exp){
     char* str = removePreWhiteSpaces(string);
     char* var = strsep(&str, "=");
@@ -720,13 +839,19 @@ int hasMatrixPointAssignmentExpression(char* string, char** varName, char** ind1
     return 1;
 }
 
+/**
+ * return if exp is a valid expression
+ * */
 int canBeProcessed(char* exp){
     return hasChooseExpression(exp, NULL) || hasTransposeExpression(exp,NULL)
     || hasSqrtExpression(exp,NULL) || hasVariableExpression(exp,NULL)
     || hasDigitExpression(exp,NULL) || hasVectorPointExpression(exp, NULL, NULL)
-    || hasMatrixPointExpression(exp, NULL, NULL, NULL);
+    || hasMatrixPointExpression(exp, NULL, NULL, NULL)
+    || hasParanthesisExpression(exp, NULL);
 }
-
+/**
+ * removes the comments
+ * */
 char* handleComments(char *_string) {
     char* string = (char*) malloc(sizeof (char ) * strlen(_string));
     strcpy(string,_string);
@@ -744,6 +869,9 @@ char* handleComments(char *_string) {
     return NULL;
 }
 
+/**
+ * Returns the precedence of an operator
+ * */
 int isOperator(char c){
 
     if(c == '*'){
@@ -754,15 +882,22 @@ int isOperator(char c){
     }
     return 0;
 }
-
+/**
+ * Checks if the expression is an integer
+ * */
 int isInteger(double num){
     return num == (int) num;
 }
+/**
+ * returns the error variable
+ * */
 struct variableType returnErrorVar() {
     struct variableType s = {"", 0, 0, NULL, 1, -1};
     return s;
 }
-
+/**
+ * Turns an Infix expression to postfix
+ * */
 struct StackNode* infixToPostFix(char* exp){
     struct StackNode* stackNode =  NULL;
     int totalNum = 0;
@@ -852,7 +987,9 @@ struct StackNode* infixToPostFix(char* exp){
     return _res;
 
 }
-
+/**
+ * Calculates the expression
+ * */
 struct variableType evaluateExpression(char* exp) {
     char* varName =  (char *) malloc(MAX_LINE_LENGTH * sizeof (char ));
     char* ind1 =  (char *) malloc(MAX_LINE_LENGTH * sizeof (char ));
@@ -866,11 +1003,21 @@ struct variableType evaluateExpression(char* exp) {
         for(int j = 0; j < dim; j++){
             res.value[j] = sqrt(res.value[j]);
         }
-        char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
-        sprintf(l, "func_sqrt(%s, %d);\n", res.cName, dim);
-        strcpy(res.cName, l);
-        free(l);
-        return res;
+        if(dim == 1) {
+            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+            sprintf(l, "func_sqrt_scalar(%s, %d)", res.cName, dim);
+            strcpy(res.cName, l);
+            free(l);
+            return res;
+        }
+        else {
+//            char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+//            sprintf(l, "func_sqrt(%s, %d)", res.cName, dim);
+//            strcpy(res.cName, l);
+//            free(l);
+//            return res;
+        return returnErrorVar();
+        }
     }
     else if(hasChooseExpression(exp, &varName)){
         char* exp1;
@@ -937,13 +1084,15 @@ struct variableType evaluateExpression(char* exp) {
         if(dim1 == dim2 && dim1 == 1){
             char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
             sprintf(l, "func_tr_scalar(%s, %d, %d);\n", res.cName, dim1, dim2);
+            s.cName = (char*) malloc(sizeof (char )* MAX_LINE_LENGTH);
             strcpy(s.cName, l);
             free(l);
             return s;
         }
         else {
             char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
-            sprintf(l, "func_tr_matrix(%s, %d, %d);\n", res.cName, dim1, dim2);
+            sprintf(l, "func_tr_matrix(%s, %d, %d)", res.cName, dim1, dim2);
+            s.cName = (char*) malloc(sizeof (char )* MAX_LINE_LENGTH);
             strcpy(s.cName, l);
             free(l);
             return s;
@@ -995,6 +1144,7 @@ struct variableType evaluateExpression(char* exp) {
         struct variableType res = {.name="", 1, 1, ans, 0, s.ind};
         char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
         sprintf(l, "%s[%d]", s.cName, dim1-1);
+        res.cName = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
         strcpy(res.cName, l);
         free(l);
         return res;
@@ -1148,6 +1298,7 @@ struct variableType evaluateExpression(char* exp) {
                         if(d == 1 && d2 == 1 && d3 == 1) {
                             char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
                             sprintf(l, "func_multiply_scalar(%s, %s, %d, %d, %d)", x1.cName, x2.cName, d, d2, d3);
+                            s.cName = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
                             strcpy(s.cName, l);
                             free(l);
                         }
@@ -1155,6 +1306,7 @@ struct variableType evaluateExpression(char* exp) {
 
                             char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
                             sprintf(l, "func_multiply_matrix(%s, %s, %d, %d, %d)", x1.cName, x2.cName, d, d2, d3);
+                            s.cName = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
                             strcpy(s.cName, l);
                             free(l);
                         }
@@ -1173,7 +1325,9 @@ struct variableType evaluateExpression(char* exp) {
         return popVarStack(&evalStack);
     }
 }
-
+/**
+ * PRocesses a single line
+ * */
 int processCodeLine(char *line, int shouldPrint) {
     char* varName =  (char *) malloc(MAX_LINE_LENGTH * sizeof (char ));
     char* ind1 =  (char *) malloc(MAX_LINE_LENGTH * sizeof (char ));
@@ -1402,20 +1556,41 @@ int processCodeLine(char *line, int shouldPrint) {
             }
             if(shouldPrint) {
                 if(var.dim1 == var.dim2 && var.dim1 == 1) {
-                    char *l2 = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
-                    char* l = "printf(\"%.0f\", ";
-                    strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
-                    sprintf(l2, "%s);\n", var.cName);
-                    strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l2);
-                    free(l2);
+                    if (isInteger(var.value[i])) {
+                        char *l2 = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                        char* l = "printf(\"%.0f\\n\", ";
+                        strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+                        sprintf(l2, "%s);\n", var.cName);
+                        strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l2);
+                        free(l2);
+                    }
+                    else {
+                        char *l2 = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                        char* l = "printf(\"%.7f\\n\", ";
+                        strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+                        sprintf(l2, "%s);\n", var.cName);
+                        strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l2);
+                        free(l2);
+                    }
+
                 }
                 else {
-                    char *l2 = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
-                    char* l = "printf(\"%.7f\", ";
-                    strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
-                    sprintf(l2, "%s[%d]);\n", var.cName, i);
-                    strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l2);
-                    free(l2);
+                    if (isInteger(var.value[i])) {
+                        char *l2 = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                        char* l = "printf(\"%.0f\\n\", ";
+                        strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+                        sprintf(l2, "%s[%d]);\n", var.cName, i);
+                        strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l2);
+                        free(l2);
+                    }
+                    else {
+                        char *l2 = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+                        char* l = "printf(\"%.7f\\n\", ";
+                        strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l);
+                        sprintf(l2, "%s[%d]);\n", var.cName, i);
+                        strcpy(C_CODE_ARRAY[C_CODE_COUNT++], l2);
+                        free(l2);
+                    }
                 }
             }
         }
@@ -1426,9 +1601,9 @@ int processCodeLine(char *line, int shouldPrint) {
                 return 0;
         }
         if(shouldPrint) {
-            char *printSepChar = "----------";
+            char *printSepChar = "------------";
             strcpy(PRINT_ARRAY[PRINT_COUNT++], printSepChar);
-            strcpy(C_CODE_ARRAY[C_CODE_COUNT++], "printf(\"----------\")");
+            strcpy(C_CODE_ARRAY[C_CODE_COUNT++], "printf(\"------------\\n\");\n");
         }
     }
     else {
@@ -1652,7 +1827,7 @@ int processForLines(char* exp, int* errorLine) {
             for(int j = 0; j < FOR_COUNT; j++){
                 if(strlen((FOR_ARRAY[j])) == 0)
                     continue;
-                int res = processCodeLine(FOR_ARRAY[j], i==0 && j==0);
+                int res = processCodeLine(FOR_ARRAY[j], i==0);
                 if(!res) {
                     *errorLine += j + 1;
                     return 0;
@@ -1761,8 +1936,10 @@ void createErrorProgram(int line) {
     HAS_ERROR = 1;
     strcpy(C_ERROR_ARRAY[0], "#include <stdio.h>\n");
     strcpy(C_ERROR_ARRAY[1], "int main(){\n");
-    char err[] = "printf(\"ERROR: Line      \");\n";
-    strcpy(C_ERROR_ARRAY[2], err);
+    char *l = (char *) malloc(sizeof(char) * MAX_LINE_LENGTH);
+    sprintf(l, "printf(\"Error (Line %d)\");\n", line);
+    strcpy(C_ERROR_ARRAY[2], l);
+    free(l);
     strcpy(C_ERROR_ARRAY[3], "return 0;");
     strcpy(C_ERROR_ARRAY[4], "}");
 
@@ -1795,7 +1972,8 @@ int processCodeLines() {
                 if(found) {
                     int r = processForLines(forExp, &errorLine);
                     if(!r) {
-                        printf("Error in code line %d", errorLine + 1);
+//                        printf("Error in code line %d", errorLine + 1);
+                        createErrorProgram(i+1);
                         return 0;
                     }
                     for(int y = 0; y < FOR_COUNT; y++){
@@ -1807,7 +1985,8 @@ int processCodeLines() {
                 }
                 else{
                     if(!checkParanthesis(red)){
-                        printf("Error in code line %d", i+1);
+//                        printf("Error in code line %d", i+1);
+                        createErrorProgram(i+1);
                         return 0;
                     }
                     strcpy(FOR_ARRAY[FOR_COUNT++], red);
@@ -1817,12 +1996,14 @@ int processCodeLines() {
         }
         res = processCodeLine(reduced, 1);
         if(!res) {
-            printf("Error in code line %d", i+1);
+//            printf("Error in code line %d", i+1);
+            createErrorProgram(i+1);
             return 0;
         }
     }
     if(FOR_COUNT != 0) {
-        printf("Your for loop has no ending char }");
+//        printf("Your for loop has no ending char }");
+        createErrorProgram(i+1);
         return 0;
     }
     return 1;
@@ -1830,21 +2011,22 @@ int processCodeLines() {
 
 
 void prepareCFile() {
-    strcpy(C_START_ARRAY[0], "#include <stdio.h>\n"
+    strcpy(C_START_ARRAY[C_START_COUNT++], "#include <stdio.h>\n"
                              "#include <stdlib.h>\n"
                              "#include <string.h>\n"
-                             "#include <limits.h>\n"
                              "#include <math.h>\n"
-                             "#include \"t.h\"\n"
                              "#include <ctype.h>\n");
-    strcpy(C_START_ARRAY[1], "double* func_sqrt(double* param, int dim) {\n"
-                             "        double* res = (double*) calloc(dim, sizeof(double));\n"
-                             "        for(int j = 0; j < dim; j++){\n"
-                             "            res[j] = sqrt(param[j]);\n"
-                             "        }\n"
-                             "        return res;\n"
+//    strcpy(C_START_ARRAY[C_START_COUNT++], "double* func_sqrt(double* param, int dim) {\n"
+//                             "        double* res = (double*) calloc(dim, sizeof(double));\n"
+//                             "        for(int j = 0; j < dim; j++){\n"
+//                             "            res[j] = sqrt(param[j]);\n"
+//                             "        }\n"
+//                             "        return res;\n"
+//                             "}\n");
+    strcpy(C_START_ARRAY[C_START_COUNT++], "double func_sqrt_scalar(double param, int dim) {\n"
+                                           "        return sqrt(param);"
                              "}\n");
-    strcpy(C_START_ARRAY[2], "double func_choose(double x1, double x2, double x3, double x4) {\n"
+    strcpy(C_START_ARRAY[C_START_COUNT++], "double func_choose(double x1, double x2, double x3, double x4) {\n"
                              "        if(x1==0){\n"
                              "            return x2;\n"
                              "        }\n"
@@ -1855,7 +2037,7 @@ void prepareCFile() {
                              "            return x4;\n"
                              "        }\n"
                              "}\n");
-    strcpy(C_START_ARRAY[3], "double* func_tr_matrix(double* param, int dim1, int dim2) {\n"
+    strcpy(C_START_ARRAY[C_START_COUNT++], "double* func_tr_matrix(double* param, int dim1, int dim2) {\n"
                              "        int i, j;\n"
                              "        double* resArr = (double *) calloc(dim1*dim2, sizeof(double));\n"
                              "        for(i = 0; i < dim1; i++){\n"
@@ -1865,32 +2047,32 @@ void prepareCFile() {
                              "        }\n"
                              "        return resArr;\n"
                              "}\n");
-    strcpy(C_START_ARRAY[4], "double func_tr_scalar(double param, int dim1, int dim2) {\n"
+    strcpy(C_START_ARRAY[C_START_COUNT++], "double func_tr_scalar(double param, int dim1, int dim2) {\n"
                              "        return param;"
                              "}\n");
-    strcpy(C_START_ARRAY[5], "double* func_add_matrix(double* x1, double* x2, int d) {\n"
+    strcpy(C_START_ARRAY[C_START_COUNT++], "double* func_add_matrix(double* x1, double* x2, int d) {\n"
                              "    double* arr = (double *) calloc(d,sizeof (double ));\n"
                              "    for (int i = 0; i < d; i++) {\n"
                              "        arr[i] = x1[i] + x2[i];\n"
                              "    }\n"
                              "    return arr;\n"
                              "}\n");
-    strcpy(C_START_ARRAY[6], "double func_add_scalar(double x1, double x2, int d) {\n"
+    strcpy(C_START_ARRAY[C_START_COUNT++], "double func_add_scalar(double x1, double x2, int d) {\n"
                              "    return x1 + x2;\n"
                              "}\n");
-    strcpy(C_START_ARRAY[7], "double* func_subtract_matrix(double* x1, double* x2, int d) {\n"
+    strcpy(C_START_ARRAY[C_START_COUNT++], "double* func_subtract_matrix(double* x1, double* x2, int d) {\n"
                              "    double* arr = (double *) calloc(d,sizeof (double ));\n"
                              "    for (int i = 0; i < d; i++) {\n"
                              "        arr[i] = x1[i] - x2[i];\n"
                              "    }\n"
                              "    return arr;\n"
                              "}\n");
-    strcpy(C_START_ARRAY[8], "double func_subtract_scalar(double x1, double x2, int d) {\n"
+    strcpy(C_START_ARRAY[C_START_COUNT++], "double func_subtract_scalar(double x1, double x2, int d) {\n"
                              "    return x1 - x2;\n"
                              "}\n");
-    strcpy(C_START_ARRAY[9], "double* func_multiply_matrix(double* x1, double* x2, int d, int d2, int d3) {\n"
+    strcpy(C_START_ARRAY[C_START_COUNT++], "double* func_multiply_matrix(double* x1, double* x2, int d, int d2, int d3) {\n"
                              "    int i,j,k;\n"
-                             "    double* arr = (double *) calloc(d,sizeof (double ));\n"
+                             "    double* arr = (double *) calloc(d*d2,sizeof (double ));\n"
                              "    for(i = 0; i <d; i++){\n"
                              "          for(j = 0; j < d2; j++){\n"
                              "               for(k = 0; k < d3; k++){\n"
@@ -1900,7 +2082,7 @@ void prepareCFile() {
                              "     }"
                              "    return arr;\n"
                              "}\n");
-    strcpy(C_START_ARRAY[10], "double func_multiply_scalar(double x1, double x2, int d, int d2, int d3) {\n"
+    strcpy(C_START_ARRAY[C_START_COUNT++], "double func_multiply_scalar(double x1, double x2, int d, int d2, int d3) {\n"
                              "    return x1*x2;\n"
                              "}\n");
     strcpy(C_END_ARRAY[0], "return 0; \n}\n");
@@ -1911,18 +2093,23 @@ void prepareErrorCFile(){
     strcpy(C_START_ARRAY[0], "#include <stdio.h>\n"
                              "#include <stdlib.h>\n"
                              "#include <string.h>\n"
-                             "#include <limits.h>\n"
                              "#include <math.h>\n"
-                             "#include \"t.h\"\n"
-                             "#include <ctype.h>");
-    strcpy(C_END_ARRAY[0], "return 0; \n}\n");
+                             "#include <ctype.h>\n");
 
 }
 
 
-int writeToErrorCFile() {
-    FILE *file = fopen("output.c", "w");
-
+int writeToErrorCFile(char* filename) {
+    int ind = getLastIndex(filename, '/');
+    FILE *file;
+    if (ind == -1) {
+        file = fopen("file.c", "w");
+    }
+    else {
+        char* _fname = subStr(filename, 0, ind+1);
+        char* fname = strcat(_fname, "file.c");
+        file = fopen(fname, "w");
+    }
     if (!file) {
         printf("File not found!");
         return 0;
@@ -1932,18 +2119,27 @@ int writeToErrorCFile() {
         fprintf(file, "%s", C_ERROR_ARRAY[i]);
     }
 
-    fprintf(file, "%s", C_END_ARRAY[0]);
+//    fprintf(file, "%s", C_END_ARRAY[0]);
     return 1;
 }
 
-int writeToCFile() {
-    FILE *file = fopen("output.c", "w");
+int writeToCFile(char* filename) {
+    int ind = getLastIndex(filename, '/');
+    FILE *file;
+    if (ind == -1) {
+        file = fopen("file.c", "w");
+    }
+    else {
+        char* _fname = subStr(filename, 0, ind+1);
+        char* fname = strcat(_fname, "file.c");
+        file = fopen(fname, "w");
+    }
 
     if (!file) {
         printf("File not found!");
         return 0;
     }
-    for(int i = 0; i < 11; i++){
+    for(int i = 0; i < C_START_COUNT; i++){
         fprintf(file, "%s", C_START_ARRAY[i]);
     }
     for(int i = 0; i < C_CODE_COUNT; i++){
@@ -1954,25 +2150,29 @@ int writeToCFile() {
     return 1;
 }
 
-int main() {
-    int hasReadFile = readFile();
+int main(int argc, char** argv) {
+    if(argc != 2) {
+        printf("Please provide a filename");
+        return 1;
+    }
+    int hasReadFile = readFile(argv[1]);
     if (!hasReadFile) {
         return 1;
     }
     strcpy(C_CODE_ARRAY[C_CODE_COUNT++], "int main() {\n");
     int res = processCodeLines();
     if(res){
-        for(int i = 0; i < PRINT_COUNT; i++)
-            printf("%s\n", PRINT_ARRAY[i]);
+//        for(int i = 0; i < PRINT_COUNT; i++)
+//            printf("%s\n", PRINT_ARRAY[i]);
         prepareCFile();
-        int hasWrittenToFile = writeToCFile();
+        int hasWrittenToFile = writeToCFile(argv[1]);
         if (!hasWrittenToFile) {
             return 1;
         }
     }
     else {
         prepareErrorCFile();
-        int hasWrittenToFile = writeToErrorCFile();
+        int hasWrittenToFile = writeToErrorCFile(argv[1]);
         if (!hasWrittenToFile) {
             return 1;
         }
